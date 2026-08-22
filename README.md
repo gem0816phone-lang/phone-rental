@@ -12,15 +12,16 @@
 
 ## 設定 Google Sheet 後台
 
-1. 建立一份新的 Google Sheet。
-2. 在 Google Sheet 選「擴充功能」→「Apps Script」。
-3. 將 `apps-script/Code.gs` 的內容貼進 Apps Script 編輯器。
-4. 儲存後選「部署」→「新增部署作業」。
-5. 類型選「網路應用程式」。
-6. 執行身分選「我」。
-7. 存取權限選「任何人」。
-8. 部署後複製 Web App URL。
-9. 打開 `config.js`，把 `appsScriptUrl` 改成剛剛複製的網址。
+1. 到 <https://script.google.com/home> 建立 Apps Script 新專案。
+2. 將 `apps-script/Code.gs` 的內容貼進 Apps Script 編輯器。
+3. 儲存後選「部署」→「新增部署作業」。
+4. 類型選「網路應用程式」。
+5. 執行身分選「我」。
+6. 存取權限選「任何人」。
+7. 部署後複製 Web App URL。
+8. 打開 `config.js`，把 `appsScriptUrl` 改成剛剛複製的網址。
+
+第一次打開 Web App URL 或收到預約時，Apps Script 會自動在你的 Google Drive 建立一份名為「手機租借預約資料」的 Google Sheet。
 
 ## 發佈到 GitHub Pages
 

@@ -1,4 +1,5 @@
 const SHEET_NAME = "預約資料";
+const SPREADSHEET_NAME = "手機租借預約資料";
 
 const HEADERS = [
   "建立時間",
@@ -20,10 +21,13 @@ const HEADERS = [
 ];
 
 function doGet() {
+  const spreadsheet = getReservationSpreadsheet_();
+
   return json_({
     ok: true,
     service: "phone-rental-reservation",
-    message: "Google Apps Script is ready."
+    message: "Google Apps Script is ready.",
+    spreadsheetUrl: spreadsheet.getUrl()
   });
 }
 
@@ -72,7 +76,7 @@ function doPost(e) {
 }
 
 function getReservationSheet_() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getReservationSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
 
   if (!sheet) {
@@ -85,6 +89,19 @@ function getReservationSheet_() {
   }
 
   return sheet;
+}
+
+function getReservationSpreadsheet_() {
+  const properties = PropertiesService.getScriptProperties();
+  const spreadsheetId = properties.getProperty("SPREADSHEET_ID");
+
+  if (spreadsheetId) {
+    return SpreadsheetApp.openById(spreadsheetId);
+  }
+
+  const spreadsheet = SpreadsheetApp.create(SPREADSHEET_NAME);
+  properties.setProperty("SPREADSHEET_ID", spreadsheet.getId());
+  return spreadsheet;
 }
 
 function validate_(data) {
