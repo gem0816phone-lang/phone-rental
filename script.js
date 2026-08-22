@@ -312,7 +312,21 @@ function loadAvailability() {
     return;
   }
 
-  jsonp(endpoint, { action: "availability" })
+  const requestUrl = new URL(endpoint);
+  requestUrl.searchParams.set("action", "availability");
+  requestUrl.searchParams.set("cachebust", String(Date.now()));
+
+  fetch(requestUrl.toString(), {
+    method: "GET",
+    cache: "no-store"
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Availability request failed");
+      }
+
+      return response.json();
+    })
     .then((payload) => {
       if (!payload || !payload.ok || !Array.isArray(payload.unavailableDates)) {
         throw new Error("Invalid availability response");
@@ -326,45 +340,6 @@ function loadAvailability() {
     .catch(() => {
       availabilityStatus.textContent = "目前無法同步已滿日期，仍可先查看日曆並送出預約。";
     });
-}
-
-function jsonp(url, params) {
-  return new Promise((resolve, reject) => {
-    const callbackName = `phoneRentalAvailability_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const script = document.createElement("script");
-    const requestUrl = new URL(url);
-
-    Object.entries(params).forEach(([key, value]) => {
-      requestUrl.searchParams.set(key, value);
-    });
-
-    requestUrl.searchParams.set("callback", callbackName);
-    requestUrl.searchParams.set("cachebust", String(Date.now()));
-
-    const timeoutId = window.setTimeout(() => {
-      cleanup();
-      reject(new Error("Availability request timed out"));
-    }, 10000);
-
-    window[callbackName] = (payload) => {
-      cleanup();
-      resolve(payload);
-    };
-
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("Availability request failed"));
-    };
-
-    script.src = requestUrl.toString();
-    document.head.appendChild(script);
-
-    function cleanup() {
-      window.clearTimeout(timeoutId);
-      delete window[callbackName];
-      script.remove();
-    }
-  });
 }
 
 function getSelectedDateList() {
