@@ -1,12 +1,12 @@
 # 手機租借網站
 
-這是一個可放在 GitHub Pages 的手機租借預約網站。客人填寫日期、機型、姓名、LINE 與電話後，前端會呼叫 Google Apps Script，將資料寫入 Google Sheet。
+這是一個可放在 GitHub Pages 的手機租借預約網站。客人先在日曆選擇可租日期，再填寫姓名、LINE 與電話，前端會呼叫 Google Apps Script，將資料寫入 Google Sheet。
 
 ## 檔案
 
 - `index.html`：手機租借預約頁面。
 - `styles.css`：網站樣式。
-- `script.js`：表單驗證、估價與送出邏輯。
+- `script.js`：日曆可租狀態、表單驗證、估價與送出邏輯。
 - `config.js`：公開設定，貼上 Apps Script 網址與店家聯絡資訊。
 - `apps-script/Code.gs`：貼到 Google Apps Script 的後台程式。
 
@@ -22,6 +22,8 @@
 8. 打開 `config.js`，把 `appsScriptUrl` 改成剛剛複製的網址。
 
 第一次打開 Web App URL 或收到預約時，Apps Script 會自動在你的 Google Drive 建立一份名為「手機租借預約資料」的 Google Sheet。
+
+日曆會透過 Apps Script 讀取 Google Sheet 內的正式預約，把已預約日期顯示為「已滿」。預約編號以 `TEST-` 開頭的測試資料會被日曆忽略，不會占用日期。
 
 ## 發佈到 GitHub Pages
 

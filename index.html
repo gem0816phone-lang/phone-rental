@@ -6,12 +6,12 @@
     <title>手機租借預約</title>
     <meta
       name="description"
-      content="手機短租預約網站，可部署到 GitHub Pages，並透過 Google Apps Script 寫入 Google Sheet。"
+      content="vivo X300 Ultra 手機租借預約，先從日曆選可租日期，再填寫聯絡資料。"
     />
     <meta property="og:title" content="手機租借預約" />
     <meta
       property="og:description"
-      content="選日期、選手機，留下聯絡資料後直接寫入 Google Sheet 預約後台。"
+      content="日曆顯示可租與已滿日期，預約資料直接寫入 Google Sheet 後台。"
     />
     <meta property="og:type" content="website" />
     <link rel="preconnect" href="https://images.unsplash.com" />
@@ -36,30 +36,30 @@
     <main>
       <section class="hero" id="booking">
         <div class="hero-copy">
-          <p class="eyebrow">短租 / 出國 / 活動備用</p>
-          <h1>手機租借預約，選日期與機型就能送出。</h1>
+          <p class="eyebrow">vivo X300 Ultra 12/256GB</p>
+          <h1>先看可租日期，再預約手機。</h1>
           <p class="hero-text">
-            適合臨時備機、展場活動、旅遊上網與拍攝需求。預約送出後，店家會用 LINE
-            或電話確認庫存、押金與取還機細節。
+            目前出租機型為 vivo X300 Ultra 12/256GB。日曆會顯示每一天可租或已滿，
+            選好日期後再填寫姓名、LINE 與電話。
           </p>
           <div class="hero-actions" aria-label="聯絡方式">
-            <a class="button secondary" href="#phones">查看機型</a>
+            <a class="button secondary" href="#booking">查看日曆</a>
             <a class="button ghost" data-line-link href="https://line.me" target="_blank" rel="noreferrer">
               LINE 聯絡
             </a>
           </div>
           <dl class="quick-stats" aria-label="服務特色">
             <div>
-              <dt>最快</dt>
-              <dd>當日取機</dd>
+              <dt>機型</dt>
+              <dd>vivo X300 Ultra</dd>
+            </div>
+            <div>
+              <dt>租金</dt>
+              <dd>700 元 / 日</dd>
             </div>
             <div>
               <dt>押金</dt>
-              <dd>歸還驗機後退回</dd>
-            </div>
-            <div>
-              <dt>後台</dt>
-              <dd>Google Sheet 管理</dd>
+              <dd>5000+證件 / 30000免證</dd>
             </div>
           </dl>
         </div>
@@ -67,70 +67,111 @@
         <aside class="booking-panel" aria-labelledby="booking-title">
           <div class="panel-heading">
             <p>線上預約</p>
-            <h2 id="booking-title">填寫租借資料</h2>
+            <h2 id="booking-title">先選租借日期</h2>
           </div>
 
           <form class="booking-form" id="reservationForm">
-            <div class="form-grid">
-              <label>
-                <span>租借開始日期</span>
-                <input type="date" name="rentalStart" required />
-              </label>
-              <label>
-                <span>租借結束日期</span>
-                <input type="date" name="rentalEnd" required />
-              </label>
+            <input type="hidden" name="model" value="vivo-x300-ultra" />
+            <input type="hidden" name="rentalStart" />
+            <input type="hidden" name="rentalEnd" />
+            <input type="hidden" name="selectedDates" />
+
+            <div class="booking-steps" aria-label="預約步驟">
+              <span class="step-pill is-active" id="dateStepPill">1 選日期</span>
+              <span class="step-pill" id="detailsStepPill">2 填資料</span>
             </div>
 
-            <label>
-              <span>手機型號</span>
-              <select name="model" required>
-                <option value="">請選擇機型</option>
-              </select>
-            </label>
+            <section class="date-step" id="dateStep">
+              <article class="rental-summary" aria-label="出租手機資訊">
+                <div class="device-art" style="--device-color: #d8eee8" aria-hidden="true"></div>
+                <div>
+                  <h3>vivo X300 Ultra</h3>
+                  <p>12/256GB，租金 700 元 / 日</p>
+                  <p>押金：5000 元 + 證件，或 30000 元免證件</p>
+                </div>
+              </article>
 
-            <div class="form-grid">
+              <div class="calendar-toolbar">
+                <button class="icon-button" type="button" id="prevMonthButton" aria-label="上一個月">‹</button>
+                <strong id="monthLabel">月份</strong>
+                <button class="icon-button" type="button" id="nextMonthButton" aria-label="下一個月">›</button>
+              </div>
+
+              <div class="calendar-legend" aria-label="日期狀態說明">
+                <span><i class="status-dot available"></i>可租</span>
+                <span><i class="status-dot full"></i>已滿</span>
+                <span><i class="status-dot selected"></i>已選</span>
+              </div>
+
+              <div class="availability-status" id="availabilityStatus">正在同步可租日期...</div>
+              <div class="calendar-weekdays" aria-hidden="true">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+              </div>
+              <div class="calendar-grid" id="calendarGrid" aria-label="租借日期日曆"></div>
+
+              <div class="estimate" id="estimateBox">請先在日曆上選擇要租的日期。</div>
+              <button class="button primary" type="button" id="continueButton" disabled>選好日期，填寫資料</button>
+            </section>
+
+            <section class="details-step" id="detailsStep" hidden>
+              <div class="selected-review" id="selectedDatesReview"></div>
+
+              <fieldset class="deposit-options">
+                <legend>押金方式</legend>
+                <label>
+                  <input type="radio" name="depositOption" value="5000 元 + 證件" required />
+                  <span>5000 元 + 證件</span>
+                </label>
+                <label>
+                  <input type="radio" name="depositOption" value="30000 元免證件" required />
+                  <span>30000 元，無須證件</span>
+                </label>
+              </fieldset>
+
+              <div class="form-grid">
+                <label>
+                  <span>姓名</span>
+                  <input type="text" name="customerName" autocomplete="name" placeholder="王小明" required />
+                </label>
+                <label>
+                  <span>LINE ID</span>
+                  <input type="text" name="lineId" autocomplete="off" placeholder="@lineid 或 LINE 名稱" required />
+                </label>
+              </div>
+
               <label>
-                <span>姓名</span>
-                <input type="text" name="customerName" autocomplete="name" placeholder="王小明" required />
+                <span>電話</span>
+                <input
+                  type="tel"
+                  name="phone"
+                  autocomplete="tel"
+                  inputmode="tel"
+                  placeholder="09xx-xxx-xxx"
+                  required
+                />
               </label>
+
               <label>
-                <span>LINE ID</span>
-                <input type="text" name="lineId" autocomplete="off" placeholder="@lineid 或 LINE 名稱" required />
+                <span>備註</span>
+                <textarea
+                  name="notes"
+                  rows="3"
+                  placeholder="例：想約取機時間、取還機地點、其他需求"
+                ></textarea>
               </label>
-            </div>
 
-            <label>
-              <span>電話</span>
-              <input
-                type="tel"
-                name="phone"
-                autocomplete="tel"
-                inputmode="tel"
-                placeholder="09xx-xxx-xxx"
-                required
-              />
-            </label>
-
-            <label>
-              <span>備註</span>
-              <textarea
-                name="notes"
-                rows="3"
-                placeholder="例：希望台北車站附近取機、需要充電線、出國備用機"
-              ></textarea>
-            </label>
+              <div class="form-actions">
+                <button class="button ghost" type="button" id="editDatesButton">重新選日期</button>
+                <button class="button primary" type="submit" id="submitButton">送出預約</button>
+              </div>
+            </section>
 
             <label class="honeypot" aria-hidden="true">
               <span>公司網站</span>
               <input type="text" name="companyWebsite" tabindex="-1" autocomplete="off" />
             </label>
-
-            <div class="estimate" id="estimateBox">選擇日期與機型後會顯示預估租金。</div>
-
-            <button class="button primary" type="submit" id="submitButton">送出預約</button>
             <p class="form-note">
-              送出後資料會寫入 Google Sheet。實際是否有庫存，仍以店家回覆確認為準。
+              送出後資料會寫入 Google Sheet。實際取還機方式與押金仍以店家回覆確認為準。
             </p>
             <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
           </form>
@@ -144,15 +185,15 @@
           loading="lazy"
         />
         <div class="visual-note">
-          <p>把網站放在 GitHub Pages，預約資料直接進 Google Sheet。</p>
-          <span>不需要 VPS，也不用自己架資料庫。</span>
+          <p>只有一台手機，日曆會直接標示可租或已滿。</p>
+          <span>預約送出後，資料會進 Google Sheet 後台。</span>
         </div>
       </section>
 
       <section class="section" id="phones">
         <div class="section-heading">
           <p class="eyebrow">可租機型</p>
-          <h2>常見租借手機</h2>
+          <h2>目前出租手機</h2>
         </div>
         <div class="phone-grid" id="phoneGrid"></div>
       </section>
@@ -166,12 +207,12 @@
           <article>
             <span>1</span>
             <h3>送出預約</h3>
-            <p>客人選日期、機型並留下聯絡資料，系統寫入 Google Sheet。</p>
+            <p>客人先從日曆選可租日期，再留下聯絡資料，系統寫入 Google Sheet。</p>
           </article>
           <article>
             <span>2</span>
             <h3>店家確認</h3>
-            <p>用 LINE 或電話確認庫存、押金、租期與取還機地點。</p>
+            <p>用 LINE 或電話確認取還機時間、押金方式與證件需求。</p>
           </article>
           <article>
             <span>3</span>
@@ -189,7 +230,7 @@
         <div class="faq-list">
           <details>
             <summary>押金怎麼收？</summary>
-            <p>預設文案是「歸還驗機後退回」，金額可在前端機型資料或 Google Sheet 後台自行調整。</p>
+            <p>可選 5000 元 + 證件，或 30000 元免證件。歸還驗機後依約定退回押金。</p>
           </details>
           <details>
             <summary>客人的個資會不會放在 GitHub？</summary>

@@ -1,45 +1,14 @@
-const phones = [
-  {
-    id: "iphone-15-pro",
-    name: "iPhone 15 Pro",
-    storage: "256GB",
-    daily: 650,
-    deposit: 6000,
-    badge: "熱門",
-    color: "#d8eee8",
-    note: "拍照、錄影與高效能需求"
-  },
-  {
-    id: "iphone-14",
-    name: "iPhone 14",
-    storage: "128GB",
-    daily: 520,
-    deposit: 5000,
-    badge: "穩定",
-    color: "#f9dfd7",
-    note: "日常備機與出國使用"
-  },
-  {
-    id: "galaxy-s24",
-    name: "Galaxy S24",
-    storage: "256GB",
-    daily: 560,
-    deposit: 5000,
-    badge: "Android",
-    color: "#dbe4ff",
-    note: "展場測試、拍攝與通訊"
-  },
-  {
-    id: "pixel-8",
-    name: "Google Pixel 8",
-    storage: "128GB",
-    daily: 480,
-    deposit: 4500,
-    badge: "拍照",
-    color: "#f6e7a8",
-    note: "翻譯、拍照與旅遊備用"
-  }
-];
+const phone = {
+  id: "vivo-x300-ultra",
+  name: "vivo X300 Ultra",
+  storage: "12/256GB",
+  daily: 700,
+  depositWithId: 5000,
+  depositNoId: 30000,
+  badge: "唯一機型",
+  color: "#d8eee8",
+  note: "12/256GB，適合旅遊、拍攝、備用機"
+};
 
 const currency = new Intl.NumberFormat("zh-TW", {
   style: "currency",
@@ -47,60 +16,73 @@ const currency = new Intl.NumberFormat("zh-TW", {
   maximumFractionDigits: 0
 });
 
+const weekdayFormatter = new Intl.DateTimeFormat("zh-TW", { weekday: "short" });
+const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long" });
 const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 const form = document.querySelector("#reservationForm");
-const modelSelect = form.elements.model;
-const startInput = form.elements.rentalStart;
-const endInput = form.elements.rentalEnd;
+const dateStep = document.querySelector("#dateStep");
+const detailsStep = document.querySelector("#detailsStep");
+const dateStepPill = document.querySelector("#dateStepPill");
+const detailsStepPill = document.querySelector("#detailsStepPill");
+const calendarGrid = document.querySelector("#calendarGrid");
+const monthLabel = document.querySelector("#monthLabel");
+const prevMonthButton = document.querySelector("#prevMonthButton");
+const nextMonthButton = document.querySelector("#nextMonthButton");
+const continueButton = document.querySelector("#continueButton");
+const editDatesButton = document.querySelector("#editDatesButton");
 const estimateBox = document.querySelector("#estimateBox");
+const selectedDatesReview = document.querySelector("#selectedDatesReview");
+const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
 const phoneGrid = document.querySelector("#phoneGrid");
 
+const today = startOfDay(new Date());
+let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const selectedDates = new Set();
+let unavailableDates = new Set(config.unavailableDates || []);
+
 init();
 
 function init() {
-  renderPhoneOptions();
   renderPhoneCards();
   applyBusinessConfig();
-  setDateLimits();
-
-  form.addEventListener("input", updateEstimate);
-  form.addEventListener("submit", handleSubmit);
-  updateEstimate();
+  bindEvents();
+  renderCalendar();
+  updateSelectionSummary();
+  loadAvailability();
 }
 
-function renderPhoneOptions() {
-  phones.forEach((phone) => {
-    const option = new Option(`${phone.name} / ${phone.storage} / ${currency.format(phone.daily)} 每日`, phone.id);
-    modelSelect.add(option);
-  });
+function bindEvents() {
+  prevMonthButton.addEventListener("click", () => changeMonth(-1));
+  nextMonthButton.addEventListener("click", () => changeMonth(1));
+  continueButton.addEventListener("click", showDetailsStep);
+  editDatesButton.addEventListener("click", showDateStep);
+  form.addEventListener("change", updateSelectionSummary);
+  form.addEventListener("submit", handleSubmit);
 }
 
 function renderPhoneCards() {
-  phoneGrid.innerHTML = phones
-    .map(
-      (phone) => `
-        <article class="phone-card">
-          <div class="phone-top">
-            <div>
-              <h3>${phone.name}</h3>
-              <p>${phone.storage}</p>
-            </div>
-            <span class="tag">${phone.badge}</span>
-          </div>
-          <div class="device-art" style="--device-color: ${phone.color}" aria-hidden="true"></div>
-          <div class="phone-meta">
-            <span class="price">${currency.format(phone.daily)} / 日</span>
-            <span>押金 ${currency.format(phone.deposit)}</span>
-            <span>${phone.note}</span>
-          </div>
-        </article>
-      `
-    )
-    .join("");
+  phoneGrid.innerHTML = `
+    <article class="phone-card featured-phone">
+      <div class="phone-top">
+        <div>
+          <h3>${phone.name}</h3>
+          <p>${phone.storage}</p>
+        </div>
+        <span class="tag">${phone.badge}</span>
+      </div>
+      <div class="device-art" style="--device-color: ${phone.color}" aria-hidden="true"></div>
+      <div class="phone-meta">
+        <span class="price">${currency.format(phone.daily)} / 日</span>
+        <span>押金 ${currency.format(phone.depositWithId)} + 證件</span>
+        <span>或 ${currency.format(phone.depositNoId)} 免證件</span>
+        <span>${phone.note}</span>
+      </div>
+    </article>
+  `;
 }
 
 function applyBusinessConfig() {
@@ -118,56 +100,142 @@ function applyBusinessConfig() {
   });
 }
 
-function setDateLimits() {
-  const today = toDateInputValue(new Date());
-  startInput.min = today;
-  endInput.min = today;
+function changeMonth(delta) {
+  visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1);
+  renderCalendar();
 }
 
-function updateEstimate() {
-  endInput.min = startInput.value || toDateInputValue(new Date());
+function renderCalendar() {
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const phone = getSelectedPhone();
-  const days = getRentalDays();
+  monthLabel.textContent = monthFormatter.format(visibleMonth);
+  prevMonthButton.disabled = visibleMonth <= minMonth;
 
-  if (!phone || !days) {
-    estimateBox.textContent = "選擇日期與機型後會顯示預估租金。";
+  const cells = [];
+
+  for (let i = 0; i < firstDay.getDay(); i += 1) {
+    cells.push('<span class="calendar-empty" aria-hidden="true"></span>');
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    const date = new Date(year, month, day);
+    const dateString = toDateInputValue(date);
+    const isPast = date < today;
+    const isFull = unavailableDates.has(dateString);
+    const isSelected = selectedDates.has(dateString);
+    const status = isPast ? "不可租" : isFull ? "已滿" : "可租";
+    const classes = ["calendar-day"];
+
+    if (isPast) classes.push("is-past");
+    if (isFull) classes.push("is-full");
+    if (isSelected) classes.push("is-selected");
+
+    cells.push(`
+      <button
+        class="${classes.join(" ")}"
+        type="button"
+        data-date="${dateString}"
+        ${isPast || isFull ? "disabled" : ""}
+        aria-pressed="${isSelected ? "true" : "false"}"
+        aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}"
+      >
+        <span class="date-number">${day}</span>
+        <span class="date-status">${isSelected ? "已選" : status}</span>
+      </button>
+    `);
+  }
+
+  calendarGrid.innerHTML = cells.join("");
+  calendarGrid.querySelectorAll(".calendar-day:not(:disabled)").forEach((button) => {
+    button.addEventListener("click", () => toggleDate(button.dataset.date));
+  });
+}
+
+function toggleDate(dateString) {
+  if (selectedDates.has(dateString)) {
+    selectedDates.delete(dateString);
+  } else {
+    selectedDates.add(dateString);
+  }
+
+  clearStatus();
+  renderCalendar();
+  updateSelectionSummary();
+}
+
+function updateSelectionSummary() {
+  const dates = getSelectedDateList();
+  const days = dates.length;
+
+  form.elements.selectedDates.value = dates.join(",");
+  form.elements.rentalStart.value = dates[0] || "";
+  form.elements.rentalEnd.value = dates[dates.length - 1] || "";
+  continueButton.disabled = days === 0;
+
+  if (!days) {
+    estimateBox.textContent = "請先在日曆上選擇要租的日期。";
+    selectedDatesReview.textContent = "";
     return;
   }
 
-  const rentalTotal = phone.daily * days;
+  const rentalTotal = days * phone.daily;
+  const dateText = dates.map(formatDateLabel).join("、");
+  const depositOption = form.elements.depositOption?.value || "尚未選擇押金方式";
+
   estimateBox.innerHTML = `
-    <strong>${phone.name}，共 ${days} 天，預估租金 ${currency.format(rentalTotal)}</strong>
-    押金 ${currency.format(phone.deposit)} 另計，歸還驗機後退回。最終金額以店家確認為準。
+    <strong>已選 ${days} 天，預估租金 ${currency.format(rentalTotal)}</strong>
+    ${dateText}
+  `;
+  selectedDatesReview.innerHTML = `
+    <strong>${phone.name} ${phone.storage}</strong>
+    <span>租借日期：${dateText}</span>
+    <span>租金：${currency.format(rentalTotal)}，押金方式：${depositOption}</span>
   `;
 }
 
-function getSelectedPhone() {
-  return phones.find((phone) => phone.id === modelSelect.value);
-}
-
-function getRentalDays() {
-  if (!startInput.value || !endInput.value) {
-    return null;
+function showDetailsStep() {
+  if (!selectedDates.size) {
+    showStatus("error", "請先選擇至少一天可租日期。");
+    return;
   }
 
-  const start = parseDate(startInput.value);
-  const end = parseDate(endInput.value);
-  const dayMs = 24 * 60 * 60 * 1000;
-  const diff = Math.round((end - start) / dayMs);
+  dateStep.hidden = true;
+  detailsStep.hidden = false;
+  dateStepPill.classList.remove("is-active");
+  detailsStepPill.classList.add("is-active");
+  clearStatus();
+  updateSelectionSummary();
+}
 
-  return diff >= 0 ? diff + 1 : null;
+function showDateStep() {
+  dateStep.hidden = false;
+  detailsStep.hidden = true;
+  dateStepPill.classList.add("is-active");
+  detailsStepPill.classList.remove("is-active");
+  clearStatus();
 }
 
 async function handleSubmit(event) {
   event.preventDefault();
   clearStatus();
 
-  const phone = getSelectedPhone();
-  const days = getRentalDays();
+  const dates = getSelectedDateList();
 
-  if (!phone || !days) {
-    showStatus("error", "請確認租借日期與手機型號是否正確。");
+  if (!dates.length) {
+    showDateStep();
+    showStatus("error", "請先在日曆上選擇要租的日期。");
+    return;
+  }
+
+  const conflictedDates = dates.filter((date) => unavailableDates.has(date));
+
+  if (conflictedDates.length) {
+    showDateStep();
+    showStatus("error", `${conflictedDates.map(formatDateLabel).join("、")} 已滿，請重新選擇日期。`);
     return;
   }
 
@@ -177,23 +245,24 @@ async function handleSubmit(event) {
 
   const payload = new FormData(form);
   const reservationId = createReservationId();
-  const rentalTotal = phone.daily * days;
+  const rentalTotal = dates.length * phone.daily;
+  const depositAmount = payload.get("depositOption") === "30000 元免證件" ? phone.depositNoId : phone.depositWithId;
 
   payload.set("reservationId", reservationId);
   payload.set("modelName", phone.name);
   payload.set("storage", phone.storage);
   payload.set("dailyPrice", String(phone.daily));
-  payload.set("deposit", String(phone.deposit));
-  payload.set("rentalDays", String(days));
+  payload.set("deposit", String(depositAmount));
+  payload.set("rentalDays", String(dates.length));
   payload.set("rentalTotal", String(rentalTotal));
+  payload.set("selectedDates", dates.join(","));
+  payload.set("rentalStart", dates[0]);
+  payload.set("rentalEnd", dates[dates.length - 1]);
   payload.set("createdAt", new Date().toISOString());
   payload.set("pageUrl", window.location.href);
 
   if (payload.get("companyWebsite")) {
-    showStatus("success", `預約已送出，預約編號 ${reservationId}。`);
-    form.reset();
-    setDateLimits();
-    updateEstimate();
+    completeReservation(reservationId, dates);
     return;
   }
 
@@ -207,7 +276,7 @@ async function handleSubmit(event) {
       saveDemoReservation(payload);
       showStatus(
         "warning",
-        `目前是測試模式，資料尚未寫入 Google Sheet。預約編號 ${reservationId} 已暫存在這台瀏覽器，請先在 config.js 貼上 Apps Script 網址。`
+        `目前是測試模式，資料尚未寫入 Google Sheet。預約編號 ${reservationId} 已暫存在這台瀏覽器。`
       );
     } else {
       await fetch(endpoint, {
@@ -215,10 +284,7 @@ async function handleSubmit(event) {
         mode: "no-cors",
         body: payload
       });
-      showStatus("success", `預約已送出，預約編號 ${reservationId}。我們會用 LINE 或電話確認。`);
-      form.reset();
-      setDateLimits();
-      updateEstimate();
+      completeReservation(reservationId, dates);
     }
   } catch (error) {
     showStatus("error", "送出時遇到問題，請稍後再試，或直接用 LINE 聯絡店家。");
@@ -226,6 +292,83 @@ async function handleSubmit(event) {
     submitButton.disabled = false;
     submitButton.textContent = "送出預約";
   }
+}
+
+function completeReservation(reservationId, dates) {
+  dates.forEach((date) => unavailableDates.add(date));
+  form.reset();
+  selectedDates.clear();
+  showDateStep();
+  renderCalendar();
+  updateSelectionSummary();
+  showStatus("success", `預約已送出，預約編號 ${reservationId}。我們會用 LINE 或電話確認。`);
+}
+
+function loadAvailability() {
+  const endpoint = getAppsScriptUrl();
+
+  if (!endpoint) {
+    availabilityStatus.textContent = "目前是測試模式，日曆只會使用前端設定的已滿日期。";
+    return;
+  }
+
+  jsonp(endpoint, { action: "availability" })
+    .then((payload) => {
+      if (!payload || !payload.ok || !Array.isArray(payload.unavailableDates)) {
+        throw new Error("Invalid availability response");
+      }
+
+      unavailableDates = new Set([...(config.unavailableDates || []), ...payload.unavailableDates]);
+      availabilityStatus.textContent = `已同步可租狀態，更新時間 ${formatTime(new Date())}`;
+      renderCalendar();
+      updateSelectionSummary();
+    })
+    .catch(() => {
+      availabilityStatus.textContent = "目前無法同步已滿日期，仍可先查看日曆並送出預約。";
+    });
+}
+
+function jsonp(url, params) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `phoneRentalAvailability_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const requestUrl = new URL(url);
+
+    Object.entries(params).forEach(([key, value]) => {
+      requestUrl.searchParams.set(key, value);
+    });
+
+    requestUrl.searchParams.set("callback", callbackName);
+    requestUrl.searchParams.set("cachebust", String(Date.now()));
+
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Availability request timed out"));
+    }, 10000);
+
+    window[callbackName] = (payload) => {
+      cleanup();
+      resolve(payload);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Availability request failed"));
+    };
+
+    script.src = requestUrl.toString();
+    document.head.appendChild(script);
+
+    function cleanup() {
+      window.clearTimeout(timeoutId);
+      delete window[callbackName];
+      script.remove();
+    }
+  });
+}
+
+function getSelectedDateList() {
+  return [...selectedDates].sort();
 }
 
 function getAppsScriptUrl() {
@@ -255,8 +398,8 @@ function clearStatus() {
   formStatus.textContent = "";
 }
 
-function parseDate(value) {
-  return new Date(`${value}T00:00:00`);
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function toDateInputValue(date) {
@@ -264,6 +407,19 @@ function toDateInputValue(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function parseDate(value) {
+  return new Date(`${value}T00:00:00`);
+}
+
+function formatDateLabel(value) {
+  const date = parseDate(value);
+  return `${date.getMonth() + 1}/${date.getDate()}(${weekdayFormatter.format(date)})`;
+}
+
+function formatTime(date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 function createReservationId() {
