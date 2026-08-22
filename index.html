@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>手機租借預約</title>
+    <meta
+      name="description"
+      content="手機短租預約網站，可部署到 GitHub Pages，並透過 Google Apps Script 寫入 Google Sheet。"
+    />
+    <meta property="og:title" content="手機租借預約" />
+    <meta
+      property="og:description"
+      content="選日期、選手機，留下聯絡資料後直接寫入 Google Sheet 預約後台。"
+    />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="config.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#booking" aria-label="回到手機租借預約">
+        <span class="brand-mark" aria-hidden="true">租</span>
+        <span>手機租借預約</span>
+      </a>
+      <nav class="top-nav" aria-label="主要導覽">
+        <a href="#phones">機型</a>
+        <a href="#flow">流程</a>
+        <a href="#faq">常見問題</a>
+        <a class="nav-cta" href="#booking">立即預約</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="booking">
+        <div class="hero-copy">
+          <p class="eyebrow">短租 / 出國 / 活動備用</p>
+          <h1>手機租借預約，選日期與機型就能送出。</h1>
+          <p class="hero-text">
+            適合臨時備機、展場活動、旅遊上網與拍攝需求。預約送出後，店家會用 LINE
+            或電話確認庫存、押金與取還機細節。
+          </p>
+          <div class="hero-actions" aria-label="聯絡方式">
+            <a class="button secondary" href="#phones">查看機型</a>
+            <a class="button ghost" data-line-link href="https://line.me" target="_blank" rel="noreferrer">
+              LINE 聯絡
+            </a>
+          </div>
+          <dl class="quick-stats" aria-label="服務特色">
+            <div>
+              <dt>最快</dt>
+              <dd>當日取機</dd>
+            </div>
+            <div>
+              <dt>押金</dt>
+              <dd>歸還驗機後退回</dd>
+            </div>
+            <div>
+              <dt>後台</dt>
+              <dd>Google Sheet 管理</dd>
+            </div>
+          </dl>
+        </div>
+
+        <aside class="booking-panel" aria-labelledby="booking-title">
+          <div class="panel-heading">
+            <p>線上預約</p>
+            <h2 id="booking-title">填寫租借資料</h2>
+          </div>
+
+          <form class="booking-form" id="reservationForm">
+            <div class="form-grid">
+              <label>
+                <span>租借開始日期</span>
+                <input type="date" name="rentalStart" required />
+              </label>
+              <label>
+                <span>租借結束日期</span>
+                <input type="date" name="rentalEnd" required />
+              </label>
+            </div>
+
+            <label>
+              <span>手機型號</span>
+              <select name="model" required>
+                <option value="">請選擇機型</option>
+              </select>
+            </label>
+
+            <div class="form-grid">
+              <label>
+                <span>姓名</span>
+                <input type="text" name="customerName" autocomplete="name" placeholder="王小明" required />
+              </label>
+              <label>
+                <span>LINE ID</span>
+                <input type="text" name="lineId" autocomplete="off" placeholder="@lineid 或 LINE 名稱" required />
+              </label>
+            </div>
+
+            <label>
+              <span>電話</span>
+              <input
+                type="tel"
+                name="phone"
+                autocomplete="tel"
+                inputmode="tel"
+                placeholder="09xx-xxx-xxx"
+                required
+              />
+            </label>
+
+            <label>
+              <span>備註</span>
+              <textarea
+                name="notes"
+                rows="3"
+                placeholder="例：希望台北車站附近取機、需要充電線、出國備用機"
+              ></textarea>
+            </label>
+
+            <label class="honeypot" aria-hidden="true">
+              <span>公司網站</span>
+              <input type="text" name="companyWebsite" tabindex="-1" autocomplete="off" />
+            </label>
+
+            <div class="estimate" id="estimateBox">選擇日期與機型後會顯示預估租金。</div>
+
+            <button class="button primary" type="submit" id="submitButton">送出預約</button>
+            <p class="form-note">
+              送出後資料會寫入 Google Sheet。實際是否有庫存，仍以店家回覆確認為準。
+            </p>
+            <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
+          </form>
+        </aside>
+      </section>
+
+      <section class="visual-band" aria-label="手機租借情境">
+        <img
+          src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1100&q=80"
+          alt="桌面上的智慧型手機"
+          loading="lazy"
+        />
+        <div class="visual-note">
+          <p>把網站放在 GitHub Pages，預約資料直接進 Google Sheet。</p>
+          <span>不需要 VPS，也不用自己架資料庫。</span>
+        </div>
+      </section>
+
+      <section class="section" id="phones">
+        <div class="section-heading">
+          <p class="eyebrow">可租機型</p>
+          <h2>常見租借手機</h2>
+        </div>
+        <div class="phone-grid" id="phoneGrid"></div>
+      </section>
+
+      <section class="section process" id="flow">
+        <div class="section-heading">
+          <p class="eyebrow">預約流程</p>
+          <h2>三步驟完成租借</h2>
+        </div>
+        <div class="steps">
+          <article>
+            <span>1</span>
+            <h3>送出預約</h3>
+            <p>客人選日期、機型並留下聯絡資料，系統寫入 Google Sheet。</p>
+          </article>
+          <article>
+            <span>2</span>
+            <h3>店家確認</h3>
+            <p>用 LINE 或電話確認庫存、押金、租期與取還機地點。</p>
+          </article>
+          <article>
+            <span>3</span>
+            <h3>取機歸還</h3>
+            <p>取機時檢查外觀與功能，歸還後驗機並退回押金。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section faq" id="faq">
+        <div class="section-heading">
+          <p class="eyebrow">常見問題</p>
+          <h2>上線前可以先改成你的規則</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>押金怎麼收？</summary>
+            <p>預設文案是「歸還驗機後退回」，金額可在前端機型資料或 Google Sheet 後台自行調整。</p>
+          </details>
+          <details>
+            <summary>客人的個資會不會放在 GitHub？</summary>
+            <p>不會。GitHub Pages 只放網站，客人送出的姓名、電話與 LINE 會寫到你的 Google Sheet。</p>
+          </details>
+          <details>
+            <summary>Apps Script 網址可以公開嗎？</summary>
+            <p>可以，它不是密碼。不過後台仍應做基本欄位驗證，並且不要把管理員密碼或私密金鑰放進前端。</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>手機租借預約</p>
+      <a data-phone-link href="tel:0900000000">0900-000-000</a>
+    </footer>
+  </body>
+</html>
