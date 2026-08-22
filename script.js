@@ -37,7 +37,6 @@ const selectedDatesReview = document.querySelector("#selectedDatesReview");
 const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
-const phoneGrid = document.querySelector("#phoneGrid");
 
 const today = startOfDay(new Date());
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -47,7 +46,6 @@ let unavailableDates = new Set(config.unavailableDates || []);
 init();
 
 function init() {
-  renderPhoneCards();
   applyBusinessConfig();
   bindEvents();
   renderCalendar();
@@ -62,27 +60,6 @@ function bindEvents() {
   editDatesButton.addEventListener("click", showDateStep);
   form.addEventListener("change", updateSelectionSummary);
   form.addEventListener("submit", handleSubmit);
-}
-
-function renderPhoneCards() {
-  phoneGrid.innerHTML = `
-    <article class="phone-card featured-phone">
-      <div class="phone-top">
-        <div>
-          <h3>${phone.name}</h3>
-          <p>${phone.storage}</p>
-        </div>
-        <span class="tag">${phone.badge}</span>
-      </div>
-      <div class="device-art" style="--device-color: ${phone.color}" aria-hidden="true"></div>
-      <div class="phone-meta">
-        <span class="price">${currency.format(phone.daily)} / 日</span>
-        <span>押金 ${currency.format(phone.depositWithId)} + 證件</span>
-        <span>或 ${currency.format(phone.depositNoId)} 免證件</span>
-        <span>${phone.note}</span>
-      </div>
-    </article>
-  `;
 }
 
 function applyBusinessConfig() {

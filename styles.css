@@ -94,15 +94,11 @@ a {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(380px, 560px);
-  gap: clamp(24px, 5vw, 72px);
-  align-items: center;
-  min-height: 680px;
-  padding: clamp(36px, 7vw, 88px) clamp(18px, 4vw, 56px) 40px;
-}
-
-.hero-copy {
-  max-width: 760px;
+  grid-template-columns: minmax(0, 640px);
+  justify-content: center;
+  align-items: start;
+  min-height: auto;
+  padding: clamp(18px, 5vw, 48px) clamp(12px, 4vw, 32px) clamp(44px, 7vw, 72px);
 }
 
 .eyebrow {
@@ -140,19 +136,6 @@ h3 {
   line-height: 1.25;
 }
 
-.hero-text {
-  max-width: 620px;
-  color: var(--muted);
-  font-size: 19px;
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 28px 0;
-}
-
 .button {
   display: inline-flex;
   align-items: center;
@@ -186,41 +169,13 @@ h3 {
   transform: none;
 }
 
-.button.secondary {
-  background: var(--ink);
-  color: #fff;
-}
-
 .button.ghost {
   border-color: rgba(29, 38, 40, 0.18);
   background: rgba(255, 255, 255, 0.72);
 }
 
-.quick-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  max-width: 680px;
-  margin: 0;
-}
-
-.quick-stats div {
-  padding: 16px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.58);
-}
-
-.quick-stats dt {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.quick-stats dd {
-  margin: 4px 0 0;
-  font-weight: 800;
-}
-
 .booking-panel {
+  width: 100%;
   border: 1px solid rgba(29, 38, 40, 0.1);
   border-radius: 8px;
   background: var(--paper);
@@ -621,45 +576,6 @@ textarea:focus {
   color: #8c2718;
 }
 
-.visual-band {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
-  gap: 0;
-  align-items: stretch;
-  margin: 0 clamp(18px, 4vw, 56px);
-  overflow: hidden;
-  border: 1px solid rgba(29, 38, 40, 0.12);
-  border-radius: 8px;
-  background: var(--ink);
-}
-
-.visual-band img {
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-  object-fit: cover;
-}
-
-.visual-note {
-  display: grid;
-  align-content: center;
-  gap: 10px;
-  padding: clamp(26px, 5vw, 58px);
-  color: #fff;
-}
-
-.visual-note p {
-  margin-bottom: 0;
-  font-size: 42px;
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.visual-note span {
-  color: #dce5de;
-  font-size: 18px;
-}
-
 .section {
   padding: clamp(60px, 9vw, 108px) clamp(18px, 4vw, 56px);
 }
@@ -669,54 +585,20 @@ textarea:focus {
   margin-bottom: 24px;
 }
 
-.phone-grid,
 .steps {
   display: grid;
   gap: 16px;
-}
-
-.phone-grid {
-  grid-template-columns: minmax(0, 440px);
 }
 
 .steps {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.phone-card,
 .steps article,
 .faq-list details {
   border: 1px solid rgba(29, 38, 40, 0.1);
   border-radius: 8px;
   background: var(--paper);
-}
-
-.phone-card {
-  display: grid;
-  gap: 16px;
-  min-height: 250px;
-  padding: 18px;
-}
-
-.phone-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.phone-card h3 {
-  margin-bottom: 4px;
-}
-
-.phone-card .tag {
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #f9dfd7;
-  color: #9f301e;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
 }
 
 .device-art {
@@ -753,19 +635,6 @@ textarea:focus {
   height: 18px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.58);
-}
-
-.phone-meta {
-  display: grid;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.price {
-  color: var(--ink);
-  font-size: 24px;
-  font-weight: 900;
 }
 
 .process {
@@ -840,21 +709,15 @@ textarea:focus {
 }
 
 @media (max-width: 980px) {
-  .hero,
-  .visual-band {
-    grid-template-columns: 1fr;
-  }
-
   .hero {
-    min-height: auto;
+    grid-template-columns: minmax(0, 640px);
   }
 
   h1 {
     font-size: 56px;
   }
 
-  h2,
-  .visual-note p {
+  h2 {
     font-size: 36px;
   }
 }
@@ -873,18 +736,15 @@ textarea:focus {
     font-size: 42px;
   }
 
-  h2,
-  .visual-note p {
+  h2 {
     font-size: 30px;
   }
 
-  .quick-stats,
   .form-grid,
   .steps {
     grid-template-columns: 1fr;
   }
 
-  .phone-grid,
   .form-actions {
     grid-template-columns: 1fr;
   }
@@ -906,8 +766,7 @@ textarea:focus {
     font-size: 10px;
   }
 
-  .booking-panel,
-  .visual-band {
+  .booking-panel {
     border-radius: 0;
   }
 
@@ -917,8 +776,4 @@ textarea:focus {
     padding-left: 18px;
   }
 
-  .visual-band {
-    margin-right: 0;
-    margin-left: 0;
-  }
 }
