@@ -69,6 +69,7 @@ const weekdayFormatter = new Intl.DateTimeFormat("zh-TW", { weekday: "short" });
 const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long" });
 const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
 
 const form = document.querySelector("#reservationForm");
 const bookingTitle = document.querySelector("#booking-title");
@@ -1082,7 +1083,7 @@ function setActiveStep(step) {
   setStepCurrent(dateStepPill, step === "date");
   setStepCurrent(detailsStepPill, step === "details");
 
-  bookingTitle.textContent = "預約表單 ｜ 聯絡並交付訂金後才會鎖定檔期";
+  bookingTitle.innerHTML = bookingTitleHtml;
 
   updateStepNavigation();
 }

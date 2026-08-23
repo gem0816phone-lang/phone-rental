@@ -193,7 +193,7 @@ h3 {
 }
 
 .panel-heading {
-  padding: 26px 26px 0;
+  padding: 26px 26px 14px;
 }
 
 .panel-heading p {
@@ -208,6 +208,10 @@ h3 {
   font-size: 16px;
   line-height: 1.6;
   text-align: center;
+}
+
+.booking-title-note {
+  color: var(--coral);
 }
 
 .booking-form {
