@@ -187,7 +187,8 @@ function getComboPackageInfo() {
   return {
     ...comboPackage,
     components,
-    displayName: `[組合] ${components.map(formatItemNameWithSpec).join(" + ")}`,
+    displayName: `[組合] ${components.map((item) => item.name).join(" + ")}`,
+    hideSpecsInTitle: true,
     specSummary: components.map((item) => item.spec).join(" + ")
   };
 }
@@ -202,7 +203,7 @@ function renderTitleComponents(packageInfo) {
       ${index > 0 ? '<span class="plus-sign">+</span>' : ""}
       <span class="title-pair">
         <strong>${item.name}</strong>
-        ${item.spec ? `<span class="spec-badge">${item.spec}</span>` : ""}
+        ${packageInfo.hideSpecsInTitle || !item.spec ? "" : `<span class="spec-badge">${item.spec}</span>`}
       </span>
     `).join("")}
   `;
@@ -256,10 +257,15 @@ function renderSummaryDetailSpec(item) {
 }
 
 function renderSummaryHeading(packageInfo) {
+  const componentNames = packageInfo.components.map((item, index) => `
+    ${index > 0 ? '<span class="plus-sign">+</span>' : ""}
+    <span>${item.name}</span>
+  `).join("");
+
   return `
     <strong class="summary-heading">
       <span>[${packageInfo.typeLabel}]</span>
-      ${renderTitleComponents(packageInfo)}
+      ${componentNames}
     </strong>
   `;
 }
