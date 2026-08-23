@@ -75,7 +75,6 @@ const submitButton = document.querySelector("#submitButton");
 
 const today = startOfDay(new Date());
 const localBookedDatesByItem = {};
-let itemCardResizeObserver;
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedDates = new Set();
 let selectedPackageId = "";
@@ -125,21 +124,11 @@ function renderItemOptions() {
           <span class="option-type-pill">${packageInfo.typeLabel}</span>
         </span>
         <span class="item-details">
-          <span class="item-meta rule-row rate-rule">
-            <span>單日租金：${packageInfo.daily} 元 / 日</span>
-            <span class="rule-separator">｜</span>
-            <span>連續四日：${packageInfo.discountedDaily} 元 / 日</span>
-          </span>
-          <span class="item-meta rule-row deposit-rule">
-            <span>證件押金：${packageInfo.depositWithId} 元 + 證件</span>
-            <span class="rule-separator">｜</span>
-            <span>免證押金：${packageInfo.depositNoId} 元</span>
-          </span>
+          ${renderFeeLines(packageInfo)}
         </span>
       </span>
     </label>
   `).join("");
-  setupItemCardRuleWrapping();
 }
 
 function getPackageOptions() {
@@ -200,43 +189,13 @@ function renderOptionTitle(packageInfo) {
   `;
 }
 
-function setupItemCardRuleWrapping() {
-  if (itemCardResizeObserver) {
-    itemCardResizeObserver.disconnect();
-  }
-
-  const cards = [...document.querySelectorAll(".item-card")];
-  const updateAllCards = () => cards.forEach(updateCardRuleLayout);
-
-  if (!window.ResizeObserver) {
-    requestAnimationFrame(updateAllCards);
-    window.addEventListener("resize", updateAllCards);
-    return;
-  }
-
-  itemCardResizeObserver = new ResizeObserver((entries) => {
-    entries.forEach((entry) => updateCardRuleLayout(entry.target));
-  });
-
-  cards.forEach((card) => {
-    itemCardResizeObserver.observe(card);
-    requestAnimationFrame(() => updateCardRuleLayout(card));
-  });
-}
-
-function updateCardRuleLayout(card) {
-  card.classList.remove("is-compact-rules");
-
-  const rows = [...card.querySelectorAll(".rule-row")];
-  const needsCompact = rows.some((row) => {
-    const rowContentWidth = [...row.children].reduce((total, child) => total + child.scrollWidth, 0);
-
-    return rowContentWidth > row.clientWidth + 1;
-  });
-
-  if (needsCompact) {
-    card.classList.add("is-compact-rules");
-  }
+function renderFeeLines(packageInfo) {
+  return `
+    <span class="item-meta fee-line">單日租金：${packageInfo.daily} 元 / 日</span>
+    <span class="item-meta fee-line">連續四日：${packageInfo.discountedDaily} 元 / 日</span>
+    <span class="item-meta fee-line">證件押金：${packageInfo.depositWithId} 元 + 證件</span>
+    <span class="item-meta fee-line">免證押金：${packageInfo.depositNoId} 元</span>
+  `;
 }
 
 function applyBusinessConfig() {
@@ -748,8 +707,9 @@ function renderPackageSummary(packageInfo) {
         <span class="option-type-pill summary-type">${packageInfo.typeLabel}</span>
         ${componentNames}
       </div>
-      <p>${formatRateRule(packageInfo)}</p>
-      <p>${formatDepositRule(packageInfo)}</p>
+      <div class="summary-fees">
+        ${renderFeeLines(packageInfo)}
+      </div>
     </div>
   `;
 }
@@ -788,14 +748,6 @@ function areConsecutiveDates(dates) {
 
     return dayDifference === 1;
   });
-}
-
-function formatRateRule(packageInfo) {
-  return `單日租金：${packageInfo.daily} 元 / 日 ｜ 連續四日：${packageInfo.discountedDaily} 元 / 日`;
-}
-
-function formatDepositRule(packageInfo) {
-  return `證件押金：${packageInfo.depositWithId} 元 + 證件 ｜ 免證押金：${packageInfo.depositNoId} 元`;
 }
 
 function getDepositWithIdLabel(packageInfo) {

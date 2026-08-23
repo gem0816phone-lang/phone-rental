@@ -323,7 +323,7 @@ h3 {
   aspect-ratio: 1 / 1;
   display: block;
   height: auto;
-  align-self: start;
+  place-self: center;
   border-radius: 7px;
 }
 
@@ -386,35 +386,13 @@ h3 {
   border-top: 1px solid var(--line);
 }
 
-.rule-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  min-width: 0;
-}
-
-.rule-row > span:not(.rule-separator) {
-  white-space: nowrap;
-}
-
-.rule-separator {
-  padding: 0 4px;
-  color: var(--muted);
-}
-
-.item-card.is-compact-rules .rule-row {
+.summary-fees {
   display: grid;
   gap: 4px;
 }
 
-.item-card.is-compact-rules .rule-separator {
-  display: none;
-}
-
-.item-card.is-compact-rules .deposit-rule {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
+.fee-line {
+  display: block;
 }
 
 .spec-badge {
