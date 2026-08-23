@@ -30,6 +30,7 @@ const rentalItems = [
     daily: 200,
     discountedDaily: 150,
     discountMinDays: 3,
+    addOnDaily: 100,
     depositWithId: 1000,
     depositNoId: 10000,
     canCoexist: true
@@ -150,7 +151,7 @@ function renderItemOptions() {
       <span class="item-content">
         <span class="item-head">
           <span class="item-title">${renderOptionTitle(packageInfo)}</span>
-          <span class="option-type-pill">${packageInfo.typeLabel}</span>
+          <span class="option-type-pill${packageInfo.isAddOnOffer ? " is-offer" : ""}">${packageInfo.typeLabel}</span>
         </span>
         <span class="item-details">
           ${renderFeeLines(packageInfo)}
@@ -163,29 +164,37 @@ function renderItemOptions() {
 function getPackageOptions() {
   return [
     getComboPackageInfo(),
-    ...rentalItems.map((item) => getSinglePackageInfo(item.id))
+    ...rentalItems.map((item) => getSinglePackageInfo(item.id, {
+      asAddOnOffer: shouldUseAddOnOffer(item.id)
+    }))
   ].filter(Boolean);
 }
 
-function getSinglePackageInfo(itemId) {
+function getSinglePackageInfo(itemId, options = {}) {
   const item = itemMap.get(itemId);
 
   if (!item) {
     return null;
   }
 
+  const asAddOnOffer = Boolean(options.asAddOnOffer && item.canCoexist && item.addOnDaily);
+  const typeLabel = asAddOnOffer ? "優惠" : "單租";
+  const daily = asAddOnOffer ? item.addOnDaily : item.daily;
+  const discountedDaily = asAddOnOffer ? item.addOnDaily : item.discountedDaily;
+
   return {
     id: `single-${item.id}`,
-    typeLabel: "單租",
+    typeLabel,
     canCoexist: Boolean(item.canCoexist),
+    isAddOnOffer: asAddOnOffer,
     selectedItemIds: [item.id],
     components: [item],
     image: item.image,
     imageLabel: item.imageLabel,
-    displayName: `[單租] ${formatItemNameWithSpec(item)}`,
+    displayName: `[${typeLabel}] ${formatItemNameWithSpec(item)}`,
     specSummary: item.spec,
-    daily: item.daily,
-    discountedDaily: item.discountedDaily,
+    daily,
+    discountedDaily,
     discountMinDays: item.discountMinDays,
     depositWithId: item.depositWithId,
     depositNoId: item.depositNoId
@@ -241,6 +250,14 @@ function renderPackageMedia(packageInfo, className) {
 }
 
 function renderFeeLines(packageInfo) {
+  if (packageInfo.isAddOnOffer) {
+    return `
+      <span class="item-meta fee-line offer-fee">加租優惠：${packageInfo.daily} 元 / 日</span>
+      <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本</span>
+      <span class="item-meta fee-line">免證押金：${packageInfo.depositNoId} 元</span>
+    `;
+  }
+
   return `
     <span class="item-meta fee-line">單日租金：${packageInfo.daily} 元 / 日</span>
     <span class="item-meta fee-line">連租三天：${packageInfo.discountedDaily} 元 / 日</span>
@@ -379,7 +396,7 @@ function getRentalBreakdown(packageInfo, dates, options = {}) {
       title: formatPackageHeading(selectedPackage),
       dailyRate,
       total: dailyRate * dates.length,
-      hasDiscount: dailyRate === selectedPackage.discountedDaily
+      hasDiscount: hasRentalDiscount(dates, selectedPackage)
     };
   });
   const locationFee = options.includeLocationFees ? getTotalLocationFee(dates) : 0;
@@ -533,6 +550,8 @@ function handleItemSelectionChange(event) {
 }
 
 function updateItemSelection() {
+  renderItemOptions();
+
   const selectedItemIds = getSelectedItemIds();
   const packageInfo = getPackageInfo();
   const selectedPackageIds = getSelectedPackageIds();
@@ -779,8 +798,8 @@ async function handleSubmit(event) {
 
   const payload = new FormData(form);
   const reservationId = createReservationId(phone);
-  const dailyRate = getDailyRate(dates, packageInfo);
   const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
+  const dailyRate = breakdown.lines.reduce((total, line) => total + line.dailyRate, 0);
   const locations = getSelectedLocations(dates);
   const locationFee = getTotalLocationFee(dates);
   const depositAmount = payload.get("depositOption") === getDepositNoIdLabel(packageInfo)
@@ -1028,7 +1047,9 @@ function getSelectedPackageIds() {
 
 function getSelectedPackages() {
   return [...getSelectedPackageIds()]
-    .map((packageId) => getPackageInfoById(packageId))
+    .map((packageId) => getPackageInfoById(packageId, {
+      asAddOnOffer: shouldUseSelectedAddOnOffer(packageId)
+    }))
     .filter(Boolean);
 }
 
@@ -1050,7 +1071,7 @@ function getPackageInfo(packageId = "") {
   return combinePackageInfo(packages);
 }
 
-function getPackageInfoById(packageId) {
+function getPackageInfoById(packageId, options = {}) {
   if (!packageId) {
     return null;
   }
@@ -1060,7 +1081,7 @@ function getPackageInfoById(packageId) {
   }
 
   if (packageId.startsWith("single-")) {
-    return getSinglePackageInfo(packageId.replace("single-", ""));
+    return getSinglePackageInfo(packageId.replace("single-", ""), options);
   }
 
   return null;
@@ -1069,6 +1090,9 @@ function getPackageInfoById(packageId) {
 function combinePackageInfo(packages) {
   const selectedItemIds = [...new Set(packages.flatMap((packageInfo) => packageInfo.selectedItemIds))];
   const components = selectedItemIds.map((itemId) => itemMap.get(itemId)).filter(Boolean);
+  const discountMinDays = packages
+    .filter((packageInfo) => !packageInfo.isAddOnOffer)
+    .map((packageInfo) => packageInfo.discountMinDays);
 
   return {
     id: packages.map((packageInfo) => packageInfo.id).join("__"),
@@ -1080,7 +1104,7 @@ function combinePackageInfo(packages) {
     specSummary: components.map((item) => item.spec).join(" + "),
     daily: sumPackageField(packages, "daily"),
     discountedDaily: sumPackageField(packages, "discountedDaily"),
-    discountMinDays: Math.max(...packages.map((packageInfo) => packageInfo.discountMinDays)),
+    discountMinDays: Math.max(...(discountMinDays.length ? discountMinDays : packages.map((packageInfo) => packageInfo.discountMinDays))),
     depositWithId: sumPackageField(packages, "depositWithId"),
     depositNoId: sumPackageField(packages, "depositNoId")
   };
@@ -1092,6 +1116,14 @@ function sumPackageField(packages, fieldName) {
 
 function isAddOnPackageId(packageId) {
   return packageId.startsWith("single-") && addOnItemIds.has(packageId.replace("single-", ""));
+}
+
+function shouldUseAddOnOffer(itemId) {
+  return addOnItemIds.has(itemId) && Boolean(selectedPackageId);
+}
+
+function shouldUseSelectedAddOnOffer(packageId) {
+  return isAddOnPackageId(packageId) && Boolean(selectedPackageId);
 }
 
 function syncPackageInputs() {
@@ -1116,7 +1148,7 @@ function renderPackageSummary(packageInfo) {
     <div class="summary-photos">${images}</div>
     <div>
       <div class="package-title">
-        <span class="option-type-pill summary-type">${packageInfo.typeLabel}</span>
+        <span class="option-type-pill summary-type${packageInfo.isAddOnOffer ? " is-offer" : ""}">${packageInfo.typeLabel}</span>
         ${componentNames}
       </div>
       <div class="summary-fees">
@@ -1145,9 +1177,21 @@ function getSelectedDateList() {
 }
 
 function getDailyRate(dates, packageInfo) {
+  if (packageInfo.isAddOnOffer) {
+    return packageInfo.daily;
+  }
+
   return dates.length >= packageInfo.discountMinDays && areConsecutiveDates(dates)
     ? packageInfo.discountedDaily
     : packageInfo.daily;
+}
+
+function hasRentalDiscount(dates, packageInfo) {
+  if (packageInfo.isAddOnOffer) {
+    return false;
+  }
+
+  return dates.length >= packageInfo.discountMinDays && areConsecutiveDates(dates);
 }
 
 function areConsecutiveDates(dates) {

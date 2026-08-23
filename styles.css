@@ -316,10 +316,20 @@ h3 {
   white-space: nowrap;
 }
 
+.option-type-pill.is-offer {
+  border-color: var(--weekend-red);
+  color: var(--weekend-red);
+}
+
 .item-card.is-selected .option-type-pill {
   border-color: var(--teal);
   background: var(--teal);
   color: #fff;
+}
+
+.item-card.is-selected .option-type-pill.is-offer {
+  border-color: var(--weekend-red);
+  background: var(--weekend-red);
 }
 
 .item-photo,
@@ -563,6 +573,11 @@ h3 {
 .component-name {
   gap: 6px;
   white-space: nowrap;
+}
+
+.offer-fee {
+  color: var(--weekend-red);
+  font-weight: 900;
 }
 
 .summary-type {
