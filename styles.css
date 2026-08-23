@@ -435,6 +435,9 @@ h3 {
 }
 
 .selection-summary {
+  --summary-spec-bg: #c8e5dc;
+  --summary-spec-border: rgba(13, 123, 117, 0.42);
+  --summary-spec-color: var(--teal-dark);
   gap: 4px;
   min-height: 72px;
   padding: 14px;
@@ -446,6 +449,9 @@ h3 {
 }
 
 .date-selection-summary {
+  --summary-spec-bg: #d5eafe;
+  --summary-spec-border: rgba(12, 79, 134, 0.36);
+  --summary-spec-color: #0c4f86;
   border-color: #b8d8f6;
   background: #eaf4ff;
   color: #0c4f86;
@@ -463,7 +469,7 @@ h3 {
 }
 
 .summary-heading,
-.summary-details span {
+.summary-details > span {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -472,6 +478,12 @@ h3 {
 
 .summary-details {
   padding-top: 4px;
+}
+
+.summary-detail-spec {
+  border-color: var(--summary-spec-border);
+  background: var(--summary-spec-bg);
+  color: var(--summary-spec-color);
 }
 
 .rental-summary {

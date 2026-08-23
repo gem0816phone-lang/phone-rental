@@ -231,13 +231,21 @@ function renderSelectionSummary(packageInfo) {
   const headings = packages.map(renderSummaryHeading).join("");
   const detailItems = getSummaryDetailItems(packages);
   const details = detailItems.map((item, index) => `
-    <span>${index + 1}. ${item.name}${item.spec ? ` <span class="spec-badge">${item.spec}</span>` : ""}</span>
+    <span>${index + 1}. ${item.name}${renderSummaryDetailSpec(item)}</span>
   `).join("");
 
   return `
     <div class="summary-headings">${headings}</div>
     <div class="summary-details">${details}</div>
   `;
+}
+
+function renderSummaryDetailSpec(item) {
+  if (!item.spec) {
+    return "";
+  }
+
+  return ` <span class="spec-badge summary-detail-spec">${item.spec}</span>`;
 }
 
 function renderSummaryHeading(packageInfo) {
