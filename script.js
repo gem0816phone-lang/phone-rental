@@ -78,8 +78,6 @@ const monthLabel = document.querySelector("#monthLabel");
 const prevMonthButton = document.querySelector("#prevMonthButton");
 const nextMonthButton = document.querySelector("#nextMonthButton");
 const continueButton = document.querySelector("#continueButton");
-const editItemsButton = document.querySelector("#editItemsButton");
-const editDatesButton = document.querySelector("#editDatesButton");
 const estimateBox = document.querySelector("#estimateBox");
 const selectedDatesReview = document.querySelector("#selectedDatesReview");
 const depositOptions = document.querySelector("#depositOptions");
@@ -115,11 +113,12 @@ function bindEvents() {
     }
   });
   itemContinueButton.addEventListener("click", showDateStep);
-  editItemsButton.addEventListener("click", showItemStep);
+  itemStepPill.addEventListener("click", showItemStep);
+  dateStepPill.addEventListener("click", showDateStep);
+  detailsStepPill.addEventListener("click", showDetailsStep);
   prevMonthButton.addEventListener("click", () => changeMonth(-1));
   nextMonthButton.addEventListener("click", () => changeMonth(1));
   continueButton.addEventListener("click", showDetailsStep);
-  editDatesButton.addEventListener("click", showDateStep);
   form.addEventListener("change", (event) => {
     if (!event.target.matches('input[name="packageId"]')) {
       updateSelectionSummary();
@@ -351,13 +350,15 @@ function updateItemSelection() {
     itemSummaryBox.innerHTML = "";
     packageSummary.innerHTML = "";
     availabilityStatus.textContent = "請先選擇物品。";
+    updateStepNavigation();
     return;
   }
 
   itemSummaryBox.hidden = false;
   itemSummaryBox.innerHTML = renderSelectionSummary(packageInfo);
 
-  packageSummary.innerHTML = renderPackageSummary(packageInfo);
+  packageSummary.innerHTML = renderSelectionSummary(packageInfo);
+  updateStepNavigation();
 }
 
 function changeMonth(delta) {
@@ -450,6 +451,7 @@ function updateSelectionSummary() {
   form.elements.rentalStart.value = dates[0] || "";
   form.elements.rentalEnd.value = dates[dates.length - 1] || "";
   continueButton.disabled = !packageInfo || days === 0;
+  updateStepNavigation();
 
   if (!packageInfo) {
     estimateBox.textContent = "請先選擇要租的物品。";
@@ -740,10 +742,33 @@ function setActiveStep(step) {
   itemStepPill.classList.toggle("is-active", step === "item");
   dateStepPill.classList.toggle("is-active", step === "date");
   detailsStepPill.classList.toggle("is-active", step === "details");
+  setStepCurrent(itemStepPill, step === "item");
+  setStepCurrent(dateStepPill, step === "date");
+  setStepCurrent(detailsStepPill, step === "details");
 
   if (step === "item") bookingTitle.textContent = "先選租借物品";
   if (step === "date") bookingTitle.textContent = "選擇租借日期";
   if (step === "details") bookingTitle.textContent = "填寫預約資料";
+
+  updateStepNavigation();
+}
+
+function setStepCurrent(stepButton, isCurrent) {
+  if (isCurrent) {
+    stepButton.setAttribute("aria-current", "step");
+    return;
+  }
+
+  stepButton.removeAttribute("aria-current");
+}
+
+function updateStepNavigation() {
+  const hasPackage = Boolean(getPackageInfo());
+  const hasDates = selectedDates.size > 0;
+
+  itemStepPill.disabled = false;
+  dateStepPill.disabled = !hasPackage;
+  detailsStepPill.disabled = !hasPackage || !hasDates;
 }
 
 function getSelectedItemIds() {

@@ -14,9 +14,9 @@
       content="可單租手機、增距鏡，或組合租借；日曆會依選擇物品顯示可選與已滿日期。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-19" />
-    <script src="config.js?v=calendar-20260823-19" defer></script>
-    <script src="script.js?v=calendar-20260823-19" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-21" />
+    <script src="config.js?v=calendar-20260823-21" defer></script>
+    <script src="script.js?v=calendar-20260823-21" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -48,9 +48,9 @@
             <input type="hidden" name="selectedDates" />
 
             <div class="booking-steps" aria-label="預約步驟">
-              <span class="step-pill is-active" id="itemStepPill">1 選物品</span>
-              <span class="step-pill" id="dateStepPill">2 選日期</span>
-              <span class="step-pill" id="detailsStepPill">3 填資料</span>
+              <button class="step-pill is-active" type="button" id="itemStepPill">1 選物品</button>
+              <button class="step-pill" type="button" id="dateStepPill" disabled>2 選日期</button>
+              <button class="step-pill" type="button" id="detailsStepPill" disabled>3 填資料</button>
             </div>
 
             <section class="item-step" id="itemStep">
@@ -60,7 +60,7 @@
             </section>
 
             <section class="date-step" id="dateStep" hidden>
-              <article class="rental-summary" id="packageSummary" aria-label="已選租借物品"></article>
+              <article class="selection-summary date-selection-summary" id="packageSummary" aria-label="已選租借物品"></article>
 
               <div class="calendar-toolbar">
                 <button class="icon-button" type="button" id="prevMonthButton" aria-label="上一個月">‹</button>
@@ -83,7 +83,6 @@
               <div class="calendar-grid" id="calendarGrid" aria-label="租借日期日曆"></div>
 
               <div class="estimate" id="estimateBox">請先在日曆上選擇要租的日期。</div>
-              <button class="button ghost" type="button" id="editItemsButton">重新選物品</button>
               <button class="button primary" type="button" id="continueButton" disabled>下一步填寫資料</button>
             </section>
 
@@ -125,7 +124,6 @@
               </label>
 
               <div class="form-actions">
-                <button class="button ghost" type="button" id="editDatesButton">重新選日期</button>
                 <button class="button primary" type="submit" id="submitButton">送出預約</button>
               </div>
             </section>
