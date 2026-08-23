@@ -939,12 +939,15 @@ function renderDepositNotice() {
     return;
   }
 
-  const reservationDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo) ? 1000 : 500;
+  const isNoIdDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo);
+  const reservationDepositLine = isNoIdDeposit
+    ? "需先支付訂金 1000 元 才可保留預定"
+    : "需先支付訂金 500 元 + 手持證件自拍(可上浮水印) 才可保留預定";
 
   depositNotice.hidden = false;
   depositNotice.innerHTML = `
     <p>送出預約後請至 thread 聯繫 <a href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">@gem0816phone</a></p>
-    <p>需先支付訂金 ${reservationDeposit} 元 + 手持證件自拍(可上浮水印) 才可保留預定</p>
+    <p>${reservationDepositLine}</p>
     <p>訂金支付後若取消預約將保留至下次租借使用</p>
     <p>剩餘款項及押金將於面交時付清</p>
   `;
