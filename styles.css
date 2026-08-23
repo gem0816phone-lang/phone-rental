@@ -252,10 +252,9 @@ h3 {
 .item-card {
   position: relative;
   display: grid;
-  grid-template-columns: 136px minmax(0, 1fr);
+  grid-template-columns: minmax(132px, 32%) minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
-  min-height: 156px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -321,8 +320,8 @@ h3 {
 }
 
 .item-photo {
-  height: 100%;
-  min-height: 132px;
+  aspect-ratio: 1 / 1;
+  height: auto;
   border-radius: 7px;
 }
 

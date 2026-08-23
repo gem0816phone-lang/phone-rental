@@ -16,7 +16,7 @@ const rentalItems = [
     spec: "400mm",
     image: "G2 ultra 增距鏡 400mm.jpg",
     daily: 300,
-    discountedDaily: 200,
+    discountedDaily: 250,
     discountMinDays: 4,
     depositWithId: 1000,
     depositNoId: 10000
@@ -29,7 +29,7 @@ const comboPackage = {
   selectedItemIds: ["vivo-x300-ultra", "g2-ultra-400mm"],
   image: "vivo x300 ultra + G2 ultra 增距鏡 400mm.jpg",
   daily: 900,
-  discountedDaily: 700,
+  discountedDaily: 750,
   discountMinDays: 4,
   depositWithId: 4000,
   depositNoId: 40000
@@ -300,17 +300,24 @@ function updateItemSelection() {
   itemContinueButton.disabled = selectedItemIds.length === 0;
 
   if (!packageInfo) {
-    itemSummaryBox.textContent = "請先選擇要租的物品，可多選。";
+    itemSummaryBox.hidden = true;
+    itemSummaryBox.innerHTML = "";
     packageSummary.innerHTML = "";
     availabilityStatus.textContent = "請先選擇物品。";
     return;
   }
 
-  itemSummaryBox.innerHTML = `
-    <strong>${packageInfo.displayName}</strong>
-    <span>${formatRateRule(packageInfo)}</span>
-    <span>${formatDepositRule(packageInfo)}</span>
-  `;
+  if (packageInfo.id === comboPackage.id) {
+    itemSummaryBox.hidden = false;
+    itemSummaryBox.innerHTML = `
+      <strong>${packageInfo.displayName}</strong>
+      <span>此方案附有專用攝影手機殼及1.3M手機支架(收縮後14CM)</span>
+    `;
+  } else {
+    itemSummaryBox.hidden = true;
+    itemSummaryBox.innerHTML = "";
+  }
+
   packageSummary.innerHTML = renderPackageSummary(packageInfo);
 }
 
