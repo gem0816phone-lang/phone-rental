@@ -23,10 +23,10 @@ const rentalItems = [
   },
   {
     id: "ray-ban-meta",
-    name: "Ray-Ban Meta 智慧眼鏡",
+    name: "Meta 智慧眼鏡",
     spec: "方框M",
-    image: "Ray-Ban Meta 智慧眼鏡.jpg",
-    imageLabel: "Ray-Ban Meta",
+    image: "Meta 智慧眼鏡.jpg",
+    imageLabel: "Meta 智慧眼鏡",
     daily: 200,
     discountedDaily: 150,
     discountMinDays: 3,
@@ -1082,7 +1082,7 @@ function setActiveStep(step) {
   setStepCurrent(dateStepPill, step === "date");
   setStepCurrent(detailsStepPill, step === "details");
 
-  bookingTitle.textContent = "線上預約表單 ｜ 需聯絡並交付訂金後才會鎖定檔期";
+  bookingTitle.textContent = "預約表單 ｜ 聯絡並交付訂金後才會鎖定檔期";
 
   updateStepNavigation();
 }

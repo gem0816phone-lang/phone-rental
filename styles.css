@@ -271,7 +271,7 @@ h3 {
 .item-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(132px, 32%) minmax(0, 1fr);
+  grid-template-columns: minmax(96px, 24%) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
   padding: 12px;
@@ -351,6 +351,7 @@ h3 {
 .item-photo {
   aspect-ratio: 1 / 1;
   display: block;
+  width: min(100%, 128px);
   height: auto;
   place-self: center;
   border-radius: 7px;
@@ -374,13 +375,16 @@ h3 {
   grid-template-rows: auto 1fr;
   align-content: stretch;
   gap: 0;
+  min-width: 0;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .item-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -397,6 +401,7 @@ h3 {
   color: var(--ink);
   font-size: 17px;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .plus-sign {
@@ -406,9 +411,16 @@ h3 {
 
 .title-pair {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+}
+
+.title-pair strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .item-meta {
@@ -418,6 +430,7 @@ h3 {
 
 .item-details {
   display: grid;
+  min-width: 0;
   align-content: center;
   gap: 6px;
   padding-top: 10px;
@@ -431,6 +444,8 @@ h3 {
 
 .fee-line {
   display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .deposit-start {
@@ -580,7 +595,8 @@ h3 {
 
 .component-name {
   gap: 6px;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
 }
 
 .offer-fee {
