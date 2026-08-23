@@ -228,7 +228,11 @@ function updateCardRuleLayout(card) {
   card.classList.remove("is-compact-rules");
 
   const rows = [...card.querySelectorAll(".rule-row")];
-  const needsCompact = rows.some((row) => row.scrollWidth > row.clientWidth + 1);
+  const needsCompact = rows.some((row) => {
+    const rowContentWidth = [...row.children].reduce((total, child) => total + child.scrollWidth, 0);
+
+    return rowContentWidth > row.clientWidth + 1;
+  });
 
   if (needsCompact) {
     card.classList.add("is-compact-rules");

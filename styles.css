@@ -1053,63 +1053,10 @@ textarea:focus {
     font-size: 30px;
   }
 
-  .item-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-    gap: 10px;
-  }
-
   .form-grid,
   .rental-summary,
   .steps {
     grid-template-columns: 1fr;
-  }
-
-  .item-card {
-    grid-template-columns: minmax(92px, 32%) minmax(0, 1fr);
-    min-height: 0;
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .item-photo {
-    min-height: 150px;
-    height: 100%;
-  }
-
-  .item-content {
-    font-size: 12px;
-    line-height: 1.38;
-  }
-
-  .item-head {
-    gap: 8px;
-    padding-bottom: 8px;
-  }
-
-  .item-title {
-    gap: 4px;
-    font-size: 13px;
-  }
-
-  .option-type-pill {
-    min-height: 24px;
-    padding: 3px 8px;
-    font-size: 11px;
-  }
-
-  .item-details {
-    align-content: start;
-    gap: 0;
-    padding-top: 8px;
-  }
-
-  .title-pair {
-    gap: 4px;
-  }
-
-  .spec-badge {
-    padding: 1px 5px;
-    font-size: 10px;
   }
 
   .form-actions {
