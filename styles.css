@@ -908,6 +908,22 @@ textarea:focus {
   font-size: 18px;
 }
 
+.summary-total {
+  display: block;
+  color: var(--weekend-red);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.summary-days {
+  display: block;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .estimate-details {
   display: grid;
   gap: 10px;
@@ -929,7 +945,7 @@ textarea:focus {
 }
 
 .discount-label {
-  color: var(--weekend-red);
+  color: var(--coral);
 }
 
 .selected-review {
@@ -994,14 +1010,24 @@ textarea:focus {
   color: var(--ink);
 }
 
-.review-heading strong {
-  font-size: 18px;
+.estimate .summary-total,
+.selected-review .summary-total {
+  color: var(--weekend-red);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.estimate .summary-days {
+  color: var(--teal-dark);
+}
+
+.selected-review .summary-days {
+  color: #0c4f86;
 }
 
 .review-packages,
 .review-details,
-.review-period,
-.review-locations {
+.review-schedule {
   display: grid;
   gap: 6px;
   padding-top: 8px;

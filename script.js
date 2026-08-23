@@ -374,7 +374,7 @@ function getSummaryDetailItems(packages) {
 function renderDateEstimate(packageInfo, dates) {
   if (!dates.length) {
     return `
-      <div class="estimate-heading"><strong>已選 0 日 ｜ 總租金 0 元</strong></div>
+      ${renderTotalHeading(0, 0, false, "estimate-heading")}
       <div class="estimate-details">
         <span>請選擇租借日期</span>
       </div>
@@ -382,12 +382,9 @@ function renderDateEstimate(packageInfo, dates) {
   }
 
   const breakdown = getRentalBreakdown(packageInfo, dates);
-  const discountText = breakdown.hasDiscount ? ' ｜ <span class="discount-label">已套用連租優惠</span>' : "";
 
   return `
-    <div class="estimate-heading">
-      <strong>已選 ${dates.length} 日 ｜ 總租金 ${formatAmount(breakdown.total)} 元${discountText}</strong>
-    </div>
+    ${renderTotalHeading(breakdown.total, dates.length, breakdown.hasDiscount, "estimate-heading")}
     <div class="estimate-details">
       ${breakdown.lines.map((line) => `
         <div class="estimate-package">
@@ -422,6 +419,19 @@ function getRentalBreakdown(packageInfo, dates, options = {}) {
   };
 }
 
+function renderTotalHeading(total, days, hasDiscount, className) {
+  const discountText = hasDiscount
+    ? ' <span class="summary-separator">｜</span> <span class="discount-label">已套用連租優惠</span>'
+    : "";
+
+  return `
+    <div class="${className}">
+      <strong class="summary-total">總租金 ${formatAmount(total)} 元</strong>
+      <span class="summary-days">已選 ${days} 日${discountText}</span>
+    </div>
+  `;
+}
+
 function formatPackageHeading(packageInfo) {
   return `[${packageInfo.typeLabel}] ${packageInfo.components.map((item) => item.name).join(" + ")}`;
 }
@@ -444,18 +454,14 @@ function renderDetailsReview(packageInfo, dates) {
   const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
   const detailItems = getSummaryDetailItems(packages);
   const locations = getSelectedLocations(dates);
-  const discountText = breakdown.hasDiscount ? ' ｜ <span class="discount-label">已套用連租優惠</span>' : "";
 
   return `
-    <div class="review-heading">
-      <strong>已選 ${dates.length} 日 ｜ 總租金 ${formatAmount(breakdown.total)} 元${discountText}</strong>
-    </div>
-    <div class="review-period">
-      <strong>租借期間：${formatRentalPeriod(dates)}</strong>
-    </div>
-    <div class="review-locations">
-      <span>取機：${formatPickupDateTime(dates)} ｜ ${locations.pickup.label} ｜ ${locations.pickup.feeLabel}</span>
-      <span>還機：${formatReturnDateTime(dates)} ｜ ${locations.dropoff.label} ｜ ${locations.dropoff.feeLabel}</span>
+    ${renderTotalHeading(breakdown.total, dates.length, breakdown.hasDiscount, "review-heading")}
+    <div class="review-schedule">
+      <span>取機時間：${formatPickupDateTime(dates)}</span>
+      <span>取機地點：${locations.pickup.label} ｜ ${locations.pickup.feeLabel}</span>
+      <span>還機時間：${formatReturnDateTime(dates)}</span>
+      <span>還機地點：${locations.dropoff.label} ｜ ${locations.dropoff.feeLabel}</span>
     </div>
     <div class="review-packages">
       ${breakdown.lines.map((line) => `
