@@ -638,11 +638,9 @@ function renderCalendar() {
       ? "status-past"
       : isPast
         ? "status-past"
-        : isSelected
-          ? "status-selected"
-          : isFull
-            ? "status-full"
-            : "status-available";
+        : isFull
+          ? "status-full"
+          : "status-available";
     const classes = ["calendar-day"];
 
     if (isWeekend) classes.push("is-weekend");
@@ -661,7 +659,7 @@ function renderCalendar() {
         aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}${isFull ? "，點擊查看已租物品" : ""}"
       >
         <span class="date-number">${day}</span>
-        <span class="date-status ${statusClass}">${isSelected ? "已選" : status}</span>
+        <span class="date-status ${statusClass}">${status}</span>
       </button>
     `);
   }
