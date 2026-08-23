@@ -9,6 +9,12 @@ const ITEM_LABELS = {
   [ITEM_LENS]: "G2 Ultra 增距鏡 400mm",
   [ITEM_RAYBAN]: "Ray-Ban Meta 智慧眼鏡 方框M"
 };
+const MANUAL_BOOKED_PERIODS = [
+  { start: "2026-08-23", end: "2026-09-14", itemIds: [ITEM_LENS] },
+  { start: "2026-09-11", end: "2026-09-14", itemIds: [ITEM_PHONE, ITEM_RAYBAN] },
+  { start: "2026-09-24", end: "2026-09-28", itemIds: [ITEM_PHONE, ITEM_LENS, ITEM_RAYBAN] },
+  { start: "2026-10-03", end: "2026-10-06", itemIds: [ITEM_PHONE, ITEM_LENS, ITEM_RAYBAN] }
+];
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
 const STATUS_OPTIONS = ["新預約", "已確認", "已取消"];
 
@@ -430,10 +436,11 @@ function getBookedDates_(targetItemIds) {
 }
 
 function getBookedItemsByDate_(targetItemIds) {
+  const bookedItemsByDate = getManualBookedItemsByDate_(targetItemIds);
   const sheet = getReservationSheet_();
 
   if (sheet.getLastRow() < 2) {
-    return {};
+    return bookedItemsByDate;
   }
 
   const values = sheet.getDataRange().getValues();
@@ -441,7 +448,6 @@ function getBookedItemsByDate_(targetItemIds) {
   const indexes = buildHeaderIndex_(headers);
   const requestedItemSet = toSet_(targetItemIds || []);
   const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
-  const bookedItemsByDate = {};
 
   values.slice(1).forEach((row) => {
     const status = getCell_(row, indexes, "狀態");
@@ -461,16 +467,8 @@ function getBookedItemsByDate_(targetItemIds) {
     }
 
     getDatesFromRow_(row, indexes).forEach((date) => {
-      if (!bookedItemsByDate[date]) {
-        bookedItemsByDate[date] = [];
-      }
-
       overlapItemIds.forEach((itemId) => {
-        const label = getItemLabel_(itemId);
-
-        if (!bookedItemsByDate[date].includes(label)) {
-          bookedItemsByDate[date].push(label);
-        }
+        addBookedItemLabel_(bookedItemsByDate, date, getItemLabel_(itemId));
       });
     });
   });
@@ -478,11 +476,56 @@ function getBookedItemsByDate_(targetItemIds) {
   return bookedItemsByDate;
 }
 
+function getManualBookedItemsByDate_(targetItemIds) {
+  const requestedItemSet = toSet_(targetItemIds || []);
+  const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
+  const bookedItemsByDate = {};
+
+  MANUAL_BOOKED_PERIODS.forEach((period) => {
+    const overlapItemIds = shouldFilterByItem
+      ? period.itemIds.filter((itemId) => requestedItemSet[itemId])
+      : period.itemIds;
+
+    if (!overlapItemIds.length) {
+      return;
+    }
+
+    expandDateRange_(period.start, period.end).forEach((date) => {
+      overlapItemIds.forEach((itemId) => {
+        addBookedItemLabel_(bookedItemsByDate, date, getItemLabel_(itemId));
+      });
+    });
+  });
+
+  return bookedItemsByDate;
+}
+
+function addBookedItemLabel_(bookedItemsByDate, date, label) {
+  if (!bookedItemsByDate[date]) {
+    bookedItemsByDate[date] = [];
+  }
+
+  if (label && !bookedItemsByDate[date].includes(label)) {
+    bookedItemsByDate[date].push(label);
+  }
+}
+
+function getBookedDateSetFromItems_(bookedItemsByDate) {
+  const bookedDates = {};
+
+  Object.keys(bookedItemsByDate || {}).forEach((date) => {
+    bookedDates[date] = true;
+  });
+
+  return bookedDates;
+}
+
 function getBookedDateSet_(targetItemIds) {
+  const bookedDates = getBookedDateSetFromItems_(getManualBookedItemsByDate_(targetItemIds));
   const sheet = getReservationSheet_();
 
   if (sheet.getLastRow() < 2) {
-    return {};
+    return bookedDates;
   }
 
   const values = sheet.getDataRange().getValues();
@@ -490,7 +533,6 @@ function getBookedDateSet_(targetItemIds) {
   const indexes = buildHeaderIndex_(headers);
   const requestedItemSet = toSet_(targetItemIds || []);
   const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
-  const bookedDates = {};
 
   values.slice(1).forEach((row) => {
     const status = getCell_(row, indexes, "狀態");
