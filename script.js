@@ -119,13 +119,22 @@ function renderItemOptions() {
       <input class="item-check" type="checkbox" name="packageId" value="${packageInfo.id}" />
       <img class="item-photo" src="${packageInfo.image}" alt="${packageInfo.displayName}" />
       <span class="item-content">
-        <span class="item-title">${renderOptionTitle(packageInfo)}</span>
-        <span class="item-meta">${formatRateRule(packageInfo)}</span>
-        <span class="item-meta">${formatDepositRule(packageInfo)}</span>
-      </span>
-      <span class="option-control" aria-hidden="true">
-        <span class="option-type-pill">${packageInfo.typeLabel}</span>
-        <span class="item-checkmark"></span>
+        <span class="item-head">
+          <span class="item-title">${renderOptionTitle(packageInfo)}</span>
+          <span class="option-type-pill">${packageInfo.typeLabel}</span>
+        </span>
+        <span class="item-details">
+          <span class="item-meta rule-row rate-rule">
+            <span>單日租金：${packageInfo.daily} 元 / 日</span>
+            <span class="rule-separator">｜</span>
+            <span>連續四日：${packageInfo.discountedDaily} 元 / 日</span>
+          </span>
+          <span class="item-meta rule-row deposit-rule">
+            <span>證件押金：${packageInfo.depositWithId} 元 + 證件</span>
+            <span class="rule-separator">｜</span>
+            <span>免證押金：${packageInfo.depositNoId} 元</span>
+          </span>
+        </span>
       </span>
     </label>
   `).join("");
@@ -133,8 +142,8 @@ function renderItemOptions() {
 
 function getPackageOptions() {
   return [
-    ...rentalItems.map((item) => getSinglePackageInfo(item.id)),
-    getComboPackageInfo()
+    getComboPackageInfo(),
+    ...rentalItems.map((item) => getSinglePackageInfo(item.id))
   ].filter(Boolean);
 }
 
