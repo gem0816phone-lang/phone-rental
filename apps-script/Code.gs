@@ -2,7 +2,8 @@ const SHEET_NAME = "預約資料";
 const SPREADSHEET_NAME = "手機租借預約資料";
 const ITEM_PHONE = "vivo-x300-ultra";
 const ITEM_LENS = "g2-ultra-400mm";
-const KNOWN_ITEM_IDS = [ITEM_PHONE, ITEM_LENS];
+const ITEM_RAYBAN = "ray-ban-meta";
+const KNOWN_ITEM_IDS = [ITEM_PHONE, ITEM_LENS, ITEM_RAYBAN];
 
 const HEADERS = [
   "建立時間",
@@ -18,8 +19,13 @@ const HEADERS = [
   "預估租金",
   "押金",
   "姓名",
-  "LINE ID",
+  "thread 帳號",
   "電話",
+  "取機地點",
+  "取機加價",
+  "還機地點",
+  "還機加價",
+  "地點加價",
   "備註",
   "來源網址",
   "狀態",
@@ -97,8 +103,13 @@ function doPost(e) {
       "預估租金": number_(data.rentalTotal),
       "押金": number_(data.deposit),
       "姓名": text_(data.customerName),
-      "LINE ID": text_(data.lineId),
+      "thread 帳號": text_(data.threadAccount || data.lineId),
       "電話": text_(data.phone),
+      "取機地點": text_(data.pickupLocation),
+      "取機加價": text_(data.pickupFeeLabel || data.pickupFee),
+      "還機地點": text_(data.dropoffLocation),
+      "還機加價": text_(data.dropoffFeeLabel || data.dropoffFee),
+      "地點加價": number_(data.locationFee),
       "備註": text_(data.notes),
       "來源網址": text_(data.pageUrl),
       "狀態": "新預約",
@@ -274,6 +285,10 @@ function normalizeItemIds_(value) {
 
     if (itemId === "single-g2-ultra-400mm" || itemId === ITEM_LENS) {
       itemSet[ITEM_LENS] = true;
+    }
+
+    if (itemId === "single-ray-ban-meta" || itemId === ITEM_RAYBAN) {
+      itemSet[ITEM_RAYBAN] = true;
     }
 
     if (itemId === "combo-vivo-g2") {

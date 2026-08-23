@@ -48,6 +48,20 @@ const comboPackage = {
   depositNoId: 40000
 };
 
+const pickupLocationOptions = [
+  { label: "大直捷運站", fee: 0, feeLabel: "+ 0 元" },
+  { label: "台北小巨蛋", fee: 80, feeLabel: "+ 80 元" },
+  { label: "台北大巨蛋", fee: 100, feeLabel: "+ 100 元" },
+  { label: "其他地點取", fee: 0, feeLabel: "私訊詳談" }
+];
+
+const dropoffLocationOptions = [
+  { label: "大直捷運站", fee: 0, feeLabel: "+ 0 元" },
+  { label: "台北小巨蛋", fee: 80, feeLabel: "+ 80 元" },
+  { label: "台北大巨蛋", fee: 100, feeLabel: "+ 100 元" },
+  { label: "其他地點還", fee: 0, feeLabel: "私訊詳談" }
+];
+
 const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
 const addOnItemIds = new Set(rentalItems.filter((item) => item.canCoexist).map((item) => item.id));
 const weekdayFormatter = new Intl.DateTimeFormat("zh-TW", { weekday: "short" });
@@ -74,7 +88,10 @@ const nextMonthButton = document.querySelector("#nextMonthButton");
 const continueButton = document.querySelector("#continueButton");
 const estimateBox = document.querySelector("#estimateBox");
 const selectedDatesReview = document.querySelector("#selectedDatesReview");
+const pickupLocationSelect = document.querySelector("#pickupLocation");
+const dropoffLocationSelect = document.querySelector("#dropoffLocation");
 const depositOptions = document.querySelector("#depositOptions");
+const depositNotice = document.querySelector("#depositNotice");
 const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
@@ -92,6 +109,7 @@ init();
 
 function init() {
   renderItemOptions();
+  renderLocationOptions();
   renderDepositOptions();
   applyBusinessConfig();
   bindEvents();
@@ -228,6 +246,17 @@ function renderFeeLines(packageInfo) {
   `;
 }
 
+function renderLocationOptions() {
+  pickupLocationSelect.innerHTML = renderLocationOptionList(pickupLocationOptions);
+  dropoffLocationSelect.innerHTML = renderLocationOptionList(dropoffLocationOptions);
+}
+
+function renderLocationOptionList(options) {
+  return options.map((option) => `
+    <option value="${option.label}">${option.label} ｜ ${option.feeLabel}</option>
+  `).join("");
+}
+
 function renderSelectionSummary(packageInfo) {
   const packages = packageInfo.packages || [packageInfo];
   const headings = packages.map(renderSummaryHeading).join("");
@@ -314,7 +343,7 @@ function renderDateEstimate(packageInfo, dates) {
   `;
 }
 
-function getRentalBreakdown(packageInfo, dates) {
+function getRentalBreakdown(packageInfo, dates, options = {}) {
   const packages = packageInfo.packages || [packageInfo];
   const lines = packages.map((selectedPackage) => {
     const dailyRate = getDailyRate(dates, selectedPackage);
@@ -326,10 +355,13 @@ function getRentalBreakdown(packageInfo, dates) {
       hasDiscount: dailyRate === selectedPackage.discountedDaily
     };
   });
+  const locationFee = options.includeLocationFees ? getTotalLocationFee() : 0;
 
   return {
     lines,
-    total: lines.reduce((total, line) => total + line.total, 0),
+    itemTotal: lines.reduce((total, line) => total + line.total, 0),
+    locationFee,
+    total: lines.reduce((total, line) => total + line.total, 0) + locationFee,
     hasDiscount: lines.some((line) => line.hasDiscount)
   };
 }
@@ -344,24 +376,34 @@ function formatAmount(value) {
 
 function renderDetailsReview(packageInfo, dates) {
   const packages = packageInfo.packages || [packageInfo];
-  const breakdown = getRentalBreakdown(packageInfo, dates);
+  const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
   const detailItems = getSummaryDetailItems(packages);
+  const locations = getSelectedLocations();
   const discountText = breakdown.hasDiscount ? ' ｜ <span class="discount-label">已套用連租優惠</span>' : "";
 
   return `
     <div class="review-heading">
       <strong>已選 ${dates.length} 日 ｜ 總租金 ${formatAmount(breakdown.total)} 元${discountText}</strong>
     </div>
+    <div class="review-period">
+      <strong>租借期間：${formatRentalPeriod(dates)}</strong>
+    </div>
     <div class="review-packages">
-      ${breakdown.lines.map((line) => `<strong>${line.title}</strong>`).join("")}
+      ${breakdown.lines.map((line) => `
+        <div class="review-package">
+          <strong>${line.title}</strong>
+          <span>${formatAmount(line.dailyRate)} 元 / 日 <strong class="inline-divider">｜</strong> 共 ${formatAmount(line.total)} 元</span>
+        </div>
+      `).join("")}
     </div>
     <div class="review-details">
       ${detailItems.map((item, index) => `
         <span>${index + 1}. ${item.name}${renderSummaryDetailSpec(item)}</span>
       `).join("")}
     </div>
-    <div class="review-period">
-      <span>租借期間：${formatRentalPeriod(dates)}</span>
+    <div class="review-locations">
+      <span>取機地點：${locations.pickup.label} ｜ ${locations.pickup.feeLabel}</span>
+      <span>還機地點：${locations.dropoff.label} ｜ ${locations.dropoff.feeLabel}</span>
     </div>
   `;
 }
@@ -379,6 +421,22 @@ function formatShortDate(value) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${month}/${day}`;
+}
+
+function getSelectedLocations() {
+  return {
+    pickup: getLocationOption(pickupLocationOptions, pickupLocationSelect.value),
+    dropoff: getLocationOption(dropoffLocationOptions, dropoffLocationSelect.value)
+  };
+}
+
+function getLocationOption(options, value) {
+  return options.find((option) => option.label === value) || options[0];
+}
+
+function getTotalLocationFee() {
+  const locations = getSelectedLocations();
+  return locations.pickup.fee + locations.dropoff.fee;
 }
 
 function applyBusinessConfig() {
@@ -569,17 +627,20 @@ function updateSelectionSummary() {
   if (!packageInfo) {
     estimateBox.textContent = "請先選擇要租的物品。";
     selectedDatesReview.textContent = "";
+    renderDepositNotice();
     return;
   }
 
   if (!days) {
     estimateBox.innerHTML = renderDateEstimate(packageInfo, dates);
     selectedDatesReview.textContent = "";
+    renderDepositNotice();
     return;
   }
 
   estimateBox.innerHTML = renderDateEstimate(packageInfo, dates);
   selectedDatesReview.innerHTML = renderDetailsReview(packageInfo, dates);
+  renderDepositNotice();
 }
 
 function showItemStep() {
@@ -670,7 +731,9 @@ async function handleSubmit(event) {
   const payload = new FormData(form);
   const reservationId = createReservationId();
   const dailyRate = getDailyRate(dates, packageInfo);
-  const rentalTotal = dates.length * dailyRate;
+  const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
+  const locations = getSelectedLocations();
+  const locationFee = getTotalLocationFee();
   const depositAmount = payload.get("depositOption") === getDepositNoIdLabel(packageInfo)
     ? packageInfo.depositNoId
     : packageInfo.depositWithId;
@@ -684,10 +747,18 @@ async function handleSubmit(event) {
   payload.set("dailyPrice", String(dailyRate));
   payload.set("deposit", String(depositAmount));
   payload.set("rentalDays", String(dates.length));
-  payload.set("rentalTotal", String(rentalTotal));
+  payload.set("rentalTotal", String(breakdown.total));
   payload.set("selectedDates", dates.join(","));
   payload.set("rentalStart", dates[0]);
   payload.set("rentalEnd", dates[dates.length - 1]);
+  payload.set("pickupLocation", locations.pickup.label);
+  payload.set("pickupFee", String(locations.pickup.fee));
+  payload.set("pickupFeeLabel", locations.pickup.feeLabel);
+  payload.set("dropoffLocation", locations.dropoff.label);
+  payload.set("dropoffFee", String(locations.dropoff.fee));
+  payload.set("dropoffFeeLabel", locations.dropoff.feeLabel);
+  payload.set("locationFee", String(locationFee));
+  payload.set("threadAccount", payload.get("lineId") || "");
   payload.set("createdAt", new Date().toISOString());
   payload.set("pageUrl", window.location.href);
 
@@ -717,7 +788,7 @@ async function handleSubmit(event) {
       completeReservation(reservationId, dates, selectedItemIds);
     }
   } catch (error) {
-    showStatus("error", "送出時遇到問題，請稍後再試，或直接用 LINE 聯絡店家。");
+    showStatus("error", "送出時遇到問題，請稍後再試，或直接用 thread 聯絡店家。");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "送出預約";
@@ -742,7 +813,7 @@ function completeReservation(reservationId, dates, itemIds) {
   showItemStep();
   renderCalendar();
   updateSelectionSummary();
-  showStatus("success", `預約已送出，預約編號 ${reservationId}。我們會用 LINE 或電話確認。`);
+  showStatus("success", `預約已送出，預約編號 ${reservationId}。我們會用 thread 或電話確認。`);
 }
 
 function loadAvailability() {
@@ -815,6 +886,7 @@ function renderDepositOptions() {
       <legend>押金方式</legend>
       <p class="deposit-hint">請先選擇租借物品。</p>
     `;
+    renderDepositNotice();
     return;
   }
 
@@ -831,6 +903,28 @@ function renderDepositOptions() {
       <input type="radio" name="depositOption" value="${noIdLabel}" required />
       <span>${noIdLabel}</span>
     </label>
+  `;
+  renderDepositNotice();
+}
+
+function renderDepositNotice() {
+  const packageInfo = getPackageInfo();
+  const selectedDeposit = form.elements.depositOption?.value || "";
+
+  if (!packageInfo || !selectedDeposit) {
+    depositNotice.hidden = true;
+    depositNotice.innerHTML = "";
+    return;
+  }
+
+  const reservationDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo) ? 1000 : 500;
+
+  depositNotice.hidden = false;
+  depositNotice.innerHTML = `
+    <p>送出預約後請至 thread 聯繫 <a href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">@gem0816phone</a></p>
+    <p>需先支付訂金 ${reservationDeposit} 元 + 手持證件自拍(可上浮水印) 才可保留預定</p>
+    <p>訂金支付後若取消預約將保留至下次租借使用</p>
+    <p>剩餘款項及押金將於面交時付清</p>
   `;
 }
 

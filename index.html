@@ -14,9 +14,9 @@
       content="可單租手機、增距鏡，或組合租借；日曆會依選擇物品顯示可選與已滿日期。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-27" />
-    <script src="config.js?v=calendar-20260823-27" defer></script>
-    <script src="script.js?v=calendar-20260823-27" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-28" />
+    <script src="config.js?v=calendar-20260823-28" defer></script>
+    <script src="script.js?v=calendar-20260823-28" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -89,7 +89,16 @@
             <section class="details-step" id="detailsStep" hidden>
               <div class="selected-review" id="selectedDatesReview"></div>
 
-              <fieldset class="deposit-options" id="depositOptions"></fieldset>
+              <div class="form-grid location-grid">
+                <label>
+                  <span>取機地點</span>
+                  <select name="pickupLocation" id="pickupLocation" required></select>
+                </label>
+                <label>
+                  <span>還機地點</span>
+                  <select name="dropoffLocation" id="dropoffLocation" required></select>
+                </label>
+              </div>
 
               <div class="form-grid">
                 <label>
@@ -105,6 +114,9 @@
                   <input type="text" name="lineId" autocomplete="off" required />
                 </label>
               </div>
+
+              <fieldset class="deposit-options" id="depositOptions"></fieldset>
+              <div class="deposit-notice" id="depositNotice" hidden></div>
 
               <div class="form-actions">
                 <button class="button primary" type="submit" id="submitButton">送出預約</button>
@@ -134,12 +146,12 @@
           <article>
             <span>2</span>
             <h3>填寫資料</h3>
-            <p>留下姓名、LINE、電話與押金方式，系統會送出預約。</p>
+            <p>留下姓名、電話、thread 帳號與押金方式，系統會送出預約。</p>
           </article>
           <article>
             <span>3</span>
             <h3>確認取還</h3>
-            <p>店家會用 LINE 或電話確認取還時間、押金與證件需求。</p>
+            <p>店家會用 thread 或電話確認取還時間、押金與證件需求。</p>
           </article>
         </div>
       </section>
@@ -156,7 +168,7 @@
           </details>
           <details>
             <summary>客人的個資會不會放在 GitHub？</summary>
-            <p>不會。GitHub Pages 只放網站，客人送出的姓名、電話與 LINE 會寫到你的 Google Sheet。</p>
+            <p>不會。GitHub Pages 只放網站，客人送出的姓名、電話與 thread 帳號會寫到你的 Google Sheet。</p>
           </details>
           <details>
             <summary>Apps Script 網址可以公開嗎？</summary>
