@@ -311,7 +311,7 @@ function updateItemSelection() {
     itemSummaryBox.hidden = false;
     itemSummaryBox.innerHTML = `
       <strong>${packageInfo.displayName}</strong>
-      <span>此方案附有專用攝影手機殼及1.3M手機支架(收縮後14CM)</span>
+      <span>附有專用攝影手機殼及1.3M迷你手機支架(收縮後僅14CM)</span>
     `;
   } else {
     itemSummaryBox.hidden = true;
