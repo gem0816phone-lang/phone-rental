@@ -14,9 +14,9 @@
       content="可單租手機、增距鏡，或組合租借；日曆會依選擇物品顯示可選與已滿日期。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-26" />
-    <script src="config.js?v=calendar-20260823-26" defer></script>
-    <script src="script.js?v=calendar-20260823-26" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-27" />
+    <script src="config.js?v=calendar-20260823-27" defer></script>
+    <script src="script.js?v=calendar-20260823-27" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -94,34 +94,17 @@
               <div class="form-grid">
                 <label>
                   <span>姓名</span>
-                  <input type="text" name="customerName" autocomplete="name" placeholder="王小明" required />
+                  <input type="text" name="customerName" autocomplete="name" required />
                 </label>
                 <label>
-                  <span>LINE ID</span>
-                  <input type="text" name="lineId" autocomplete="off" placeholder="@lineid 或 LINE 名稱" required />
+                  <span>電話</span>
+                  <input type="tel" name="phone" autocomplete="tel" inputmode="tel" required />
+                </label>
+                <label>
+                  <span>thread 帳號</span>
+                  <input type="text" name="lineId" autocomplete="off" required />
                 </label>
               </div>
-
-              <label>
-                <span>電話</span>
-                <input
-                  type="tel"
-                  name="phone"
-                  autocomplete="tel"
-                  inputmode="tel"
-                  placeholder="09xx-xxx-xxx"
-                  required
-                />
-              </label>
-
-              <label>
-                <span>備註</span>
-                <textarea
-                  name="notes"
-                  rows="3"
-                  placeholder="例：想約取機時間、取還機地點、其他需求"
-                ></textarea>
-              </label>
 
               <div class="form-actions">
                 <button class="button primary" type="submit" id="submitButton">送出預約</button>

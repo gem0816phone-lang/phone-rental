@@ -223,7 +223,7 @@ function renderFeeLines(packageInfo) {
   return `
     <span class="item-meta fee-line">單日租金：${packageInfo.daily} 元 / 日</span>
     <span class="item-meta fee-line">連續四日：${packageInfo.discountedDaily} 元 / 日</span>
-    <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件</span>
+    <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本</span>
     <span class="item-meta fee-line">免證押金：${packageInfo.depositNoId} 元</span>
   `;
 }
@@ -1015,7 +1015,7 @@ function areConsecutiveDates(dates) {
 }
 
 function getDepositWithIdLabel(packageInfo) {
-  return `${packageInfo.depositWithId} 元 + 證件`;
+  return `${packageInfo.depositWithId} 元 + 證件正本`;
 }
 
 function getDepositNoIdLabel(packageInfo) {
