@@ -434,9 +434,16 @@ function renderDetailsReview(packageInfo, dates) {
 
 function formatRentalPeriod(dates) {
   const start = formatShortDate(dates[0]);
-  const end = formatShortDate(dates[dates.length - 1]);
+  const end = formatShortDate(getReturnDateValue(dates[dates.length - 1]));
 
   return `${start} 中午12點後 - ${end} 中午12點前`;
+}
+
+function getReturnDateValue(lastRentalDate) {
+  const returnDate = parseDate(lastRentalDate);
+  returnDate.setDate(returnDate.getDate() + 1);
+
+  return toDateInputValue(returnDate);
 }
 
 function formatShortDate(value) {
