@@ -327,6 +327,15 @@ h3 {
   border-radius: 7px;
 }
 
+.item-photo-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  color: var(--ink);
+  font-weight: 900;
+  text-align: center;
+}
+
 .item-content,
 .selection-summary {
   display: grid;

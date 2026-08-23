@@ -20,6 +20,19 @@ const rentalItems = [
     discountMinDays: 4,
     depositWithId: 1000,
     depositNoId: 10000
+  },
+  {
+    id: "ray-ban-meta",
+    name: "Ray-Ban Meta 智慧眼鏡",
+    spec: "方框M",
+    image: "Ray-Ban Meta 智慧眼鏡.jpg",
+    imageLabel: "Ray-Ban Meta",
+    daily: 200,
+    discountedDaily: 150,
+    discountMinDays: 4,
+    depositWithId: 1000,
+    depositNoId: 10000,
+    canCoexist: true
   }
 ];
 
@@ -36,6 +49,7 @@ const comboPackage = {
 };
 
 const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
+const addOnItemIds = new Set(rentalItems.filter((item) => item.canCoexist).map((item) => item.id));
 const currency = new Intl.NumberFormat("zh-TW", {
   style: "currency",
   currency: "TWD",
@@ -78,6 +92,7 @@ const localBookedDatesByItem = {};
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedDates = new Set();
 let selectedPackageId = "";
+let selectedAddOnPackageIds = new Set();
 let unavailableDates = new Set(config.unavailableDates || []);
 let latestAvailabilityKey = "";
 
@@ -117,7 +132,7 @@ function renderItemOptions() {
   itemGrid.innerHTML = getPackageOptions().map((packageInfo) => `
     <label class="item-card" data-package-id="${packageInfo.id}">
       <input class="item-check" type="checkbox" name="packageId" value="${packageInfo.id}" />
-      <img class="item-photo" src="${packageInfo.image}" alt="${packageInfo.displayName}" />
+      ${renderPackageMedia(packageInfo, "item-photo")}
       <span class="item-content">
         <span class="item-head">
           <span class="item-title">${renderOptionTitle(packageInfo)}</span>
@@ -148,9 +163,11 @@ function getSinglePackageInfo(itemId) {
   return {
     id: `single-${item.id}`,
     typeLabel: "單租",
+    canCoexist: Boolean(item.canCoexist),
     selectedItemIds: [item.id],
     components: [item],
     image: item.image,
+    imageLabel: item.imageLabel,
     displayName: `[單租] ${item.name} ${item.spec}`,
     specSummary: item.spec,
     daily: item.daily,
@@ -189,6 +206,18 @@ function renderOptionTitle(packageInfo) {
   `;
 }
 
+function renderPackageMedia(packageInfo, className) {
+  if (packageInfo.image) {
+    return `<img class="${className}" src="${packageInfo.image}" alt="${packageInfo.displayName}" />`;
+  }
+
+  return `
+    <span class="${className} item-photo-placeholder" aria-hidden="true">
+      <span>${packageInfo.imageLabel || packageInfo.components[0]?.name || "租借品項"}</span>
+    </span>
+  `;
+}
+
 function renderFeeLines(packageInfo) {
   return `
     <span class="item-meta fee-line">單日租金：${packageInfo.daily} 元 / 日</span>
@@ -220,7 +249,13 @@ function handleItemSelectionChange(event) {
 
   event.target.blur();
 
-  if (!isChecking && previousPackageId === clickedPackageId) {
+  if (isAddOnPackageId(clickedPackageId)) {
+    if (isChecking) {
+      selectedAddOnPackageIds.add(clickedPackageId);
+    } else {
+      selectedAddOnPackageIds.delete(clickedPackageId);
+    }
+  } else if (!isChecking && previousPackageId === clickedPackageId) {
     selectedPackageId = "";
   } else if (clickedPackageId === comboPackage.id) {
     selectedPackageId = comboPackage.id;
@@ -246,11 +281,12 @@ function handleItemSelectionChange(event) {
 function updateItemSelection() {
   const selectedItemIds = getSelectedItemIds();
   const packageInfo = getPackageInfo();
+  const selectedPackageIds = getSelectedPackageIds();
 
   syncPackageInputs();
 
   document.querySelectorAll(".item-card").forEach((card) => {
-    card.classList.toggle("is-selected", card.dataset.packageId === selectedPackageId);
+    card.classList.toggle("is-selected", selectedPackageIds.has(card.dataset.packageId));
   });
 
   form.elements.selectedItems.value = selectedItemIds.join(",");
@@ -266,11 +302,16 @@ function updateItemSelection() {
     return;
   }
 
-  if (packageInfo.id === comboPackage.id) {
+  if (selectedPackageIds.has(comboPackage.id)) {
+    const comboInfo = getComboPackageInfo();
+
     itemSummaryBox.hidden = false;
     itemSummaryBox.innerHTML = `
-      <strong>${packageInfo.displayName}</strong>
-      <span>附有專用攝影手機殼及1.3M迷你手機支架(收縮後僅14CM)</span>
+      <strong>${comboInfo.displayName}</strong>
+      <span>1.vivo X300 Ultra <strong>12/256GB</strong></span>
+      <span>2.G2 Ultra 增距鏡 <strong>400mm</strong></span>
+      <span>3.專用攝影手機殼</span>
+      <span>4.迷你手機支架1.3M(收縮後僅14CM)</span>
     `;
   } else {
     itemSummaryBox.hidden = true;
@@ -558,6 +599,7 @@ function completeReservation(reservationId, dates, itemIds) {
   form.reset();
   selectedDates = new Set();
   selectedPackageId = "";
+  selectedAddOnPackageIds = new Set();
   unavailableDates = new Set(config.unavailableDates || []);
   renderDepositOptions();
   showItemStep();
@@ -669,7 +711,38 @@ function getSelectedItemIds() {
   return getPackageInfo()?.selectedItemIds.slice() || [];
 }
 
-function getPackageInfo(packageId = selectedPackageId) {
+function getSelectedPackageIds() {
+  return new Set([
+    ...(selectedPackageId ? [selectedPackageId] : []),
+    ...selectedAddOnPackageIds
+  ]);
+}
+
+function getSelectedPackages() {
+  return [...getSelectedPackageIds()]
+    .map((packageId) => getPackageInfoById(packageId))
+    .filter(Boolean);
+}
+
+function getPackageInfo(packageId = "") {
+  if (packageId) {
+    return getPackageInfoById(packageId);
+  }
+
+  const packages = getSelectedPackages();
+
+  if (packages.length === 0) {
+    return null;
+  }
+
+  if (packages.length === 1) {
+    return packages[0];
+  }
+
+  return combinePackageInfo(packages);
+}
+
+function getPackageInfoById(packageId) {
   if (!packageId) {
     return null;
   }
@@ -685,14 +758,45 @@ function getPackageInfo(packageId = selectedPackageId) {
   return null;
 }
 
+function combinePackageInfo(packages) {
+  const selectedItemIds = [...new Set(packages.flatMap((packageInfo) => packageInfo.selectedItemIds))];
+  const components = selectedItemIds.map((itemId) => itemMap.get(itemId)).filter(Boolean);
+
+  return {
+    id: packages.map((packageInfo) => packageInfo.id).join("__"),
+    typeLabel: "多選",
+    selectedItemIds,
+    components,
+    packages,
+    displayName: packages.map((packageInfo) => packageInfo.displayName).join(" + "),
+    specSummary: components.map((item) => item.spec).join(" + "),
+    daily: sumPackageField(packages, "daily"),
+    discountedDaily: sumPackageField(packages, "discountedDaily"),
+    discountMinDays: Math.max(...packages.map((packageInfo) => packageInfo.discountMinDays)),
+    depositWithId: sumPackageField(packages, "depositWithId"),
+    depositNoId: sumPackageField(packages, "depositNoId")
+  };
+}
+
+function sumPackageField(packages, fieldName) {
+  return packages.reduce((total, packageInfo) => total + packageInfo[fieldName], 0);
+}
+
+function isAddOnPackageId(packageId) {
+  return packageId.startsWith("single-") && addOnItemIds.has(packageId.replace("single-", ""));
+}
+
 function syncPackageInputs() {
   form.querySelectorAll('input[name="packageId"]').forEach((input) => {
-    input.checked = input.value === selectedPackageId;
+    input.checked = input.value === selectedPackageId || selectedAddOnPackageIds.has(input.value);
   });
 }
 
 function renderPackageSummary(packageInfo) {
-  const images = `<img class="summary-photo" src="${packageInfo.image}" alt="${packageInfo.displayName}" />`;
+  const summaryPackages = packageInfo.packages || [packageInfo];
+  const images = summaryPackages
+    .map((selectedPackage) => renderPackageMedia(selectedPackage, "summary-photo"))
+    .join("");
   const componentNames = packageInfo.components.map((item) => `
     <span class="component-name">
       ${item.name}
