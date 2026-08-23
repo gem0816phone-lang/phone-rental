@@ -935,14 +935,16 @@ function renderDepositOptions() {
 
   depositOptions.innerHTML = `
     <legend>押金方式</legend>
-    <label>
-      <input type="radio" name="depositOption" value="${withIdLabel}" required />
-      <span>${withIdLabel}</span>
-    </label>
-    <label>
-      <input type="radio" name="depositOption" value="${noIdLabel}" required />
-      <span>${noIdLabel}</span>
-    </label>
+    <div class="deposit-choice-row">
+      <label>
+        <input type="radio" name="depositOption" value="${withIdLabel}" required />
+        <span>${withIdLabel}</span>
+      </label>
+      <label>
+        <input type="radio" name="depositOption" value="${noIdLabel}" required />
+        <span>${noIdLabel}</span>
+      </label>
+    </div>
   `;
   renderDepositNotice();
 }
