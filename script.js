@@ -118,11 +118,14 @@ function renderItemOptions() {
     <label class="item-card" data-package-id="${packageInfo.id}">
       <input class="item-check" type="checkbox" name="packageId" value="${packageInfo.id}" />
       <img class="item-photo" src="${packageInfo.image}" alt="${packageInfo.displayName}" />
-      <span class="item-checkmark" aria-hidden="true"></span>
       <span class="item-content">
         <span class="item-title">${renderOptionTitle(packageInfo)}</span>
-        <span>${formatRateRule(packageInfo)}</span>
-        <span>${formatDepositRule(packageInfo)}</span>
+        <span class="item-meta">${formatRateRule(packageInfo)}</span>
+        <span class="item-meta">${formatDepositRule(packageInfo)}</span>
+      </span>
+      <span class="option-control" aria-hidden="true">
+        <span class="option-type-pill">${packageInfo.typeLabel}</span>
+        <span class="item-checkmark"></span>
       </span>
     </label>
   `).join("");
@@ -175,7 +178,6 @@ function getComboPackageInfo() {
 
 function renderOptionTitle(packageInfo) {
   return `
-    <span class="package-type">[${packageInfo.typeLabel}]</span>
     ${packageInfo.components.map((item, index) => `
       ${index > 0 ? '<span class="plus-sign">+</span>' : ""}
       <span class="title-pair">
@@ -683,7 +685,7 @@ function renderPackageSummary(packageInfo) {
     <div class="summary-photos">${images}</div>
     <div>
       <div class="package-title">
-        <span class="package-type">[${packageInfo.typeLabel}]</span>
+        <span class="option-type-pill summary-type">${packageInfo.typeLabel}</span>
         ${componentNames}
       </div>
       <p>${formatRateRule(packageInfo)}</p>
@@ -729,15 +731,15 @@ function areConsecutiveDates(dates) {
 }
 
 function formatRateRule(packageInfo) {
-  return `租金：${packageInfo.daily} 元 / 日 ｜ 連續租借4日以上 ${packageInfo.discountedDaily} 元 / 日`;
+  return `單日租金：${packageInfo.daily} 元 / 日 ｜ 連續四日：${packageInfo.discountedDaily} 元 / 日`;
 }
 
 function formatDepositRule(packageInfo) {
-  return `押金：${packageInfo.depositWithId} 元 + 證件正本 ｜ ${packageInfo.depositNoId} 元 (免證件)`;
+  return `證件押金：${packageInfo.depositWithId} 元 + 證件 ｜ 免證押金：${packageInfo.depositNoId} 元`;
 }
 
 function getDepositWithIdLabel(packageInfo) {
-  return `${packageInfo.depositWithId} 元 + 證件正本`;
+  return `${packageInfo.depositWithId} 元 + 證件`;
 }
 
 function getDepositNoIdLabel(packageInfo) {

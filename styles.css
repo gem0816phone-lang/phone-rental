@@ -282,6 +282,36 @@ h3 {
   opacity: 0;
 }
 
+.option-control {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.option-type-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.item-card.is-selected .option-type-pill {
+  background: var(--ink);
+  color: #fff;
+}
+
 .item-photo,
 .summary-photo {
   width: 100%;
@@ -296,9 +326,6 @@ h3 {
 }
 
 .item-checkmark {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   display: grid;
   width: 26px;
   height: 26px;
@@ -328,7 +355,7 @@ h3 {
 .item-content {
   align-content: center;
   gap: 6px;
-  padding-right: 24px;
+  padding-right: 102px;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.45;
@@ -354,6 +381,11 @@ h3 {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+}
+
+.item-meta {
+  color: var(--ink);
+  font-weight: 900;
 }
 
 .spec-badge {
@@ -460,8 +492,8 @@ h3 {
   white-space: nowrap;
 }
 
-.package-type {
-  color: var(--teal);
+.summary-type {
+  margin-right: 2px;
 }
 
 .rental-summary p {
@@ -994,7 +1026,7 @@ textarea:focus {
   }
 
   .item-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
     gap: 10px;
   }
 
@@ -1009,6 +1041,14 @@ textarea:focus {
     min-height: 0;
     gap: 10px;
     padding: 10px;
+  }
+
+  .option-control {
+    position: static;
+    justify-content: flex-end;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid rgba(29, 38, 40, 0.08);
   }
 
   .item-photo {
@@ -1027,10 +1067,6 @@ textarea:focus {
   .item-title {
     gap: 4px;
     font-size: 13px;
-  }
-
-  .item-title .package-type {
-    flex-basis: 100%;
   }
 
   .title-pair {
