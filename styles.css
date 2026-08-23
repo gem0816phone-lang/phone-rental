@@ -924,6 +924,12 @@ textarea:focus {
   line-height: 1.45;
 }
 
+.estimate-heading,
+.review-heading {
+  display: grid;
+  gap: 4px;
+}
+
 .estimate-details {
   display: grid;
   gap: 10px;
@@ -1017,12 +1023,9 @@ textarea:focus {
   line-height: 1.25;
 }
 
-.estimate .summary-days {
-  color: var(--teal-dark);
-}
-
+.estimate .summary-days,
 .selected-review .summary-days {
-  color: #0c4f86;
+  color: var(--ink);
 }
 
 .review-packages,

@@ -374,7 +374,7 @@ function getSummaryDetailItems(packages) {
 function renderDateEstimate(packageInfo, dates) {
   if (!dates.length) {
     return `
-      ${renderTotalHeading(0, 0, false, "estimate-heading")}
+      ${renderTotalHeading(0, [], false, "estimate-heading")}
       <div class="estimate-details">
         <span>請選擇租借日期</span>
       </div>
@@ -384,7 +384,7 @@ function renderDateEstimate(packageInfo, dates) {
   const breakdown = getRentalBreakdown(packageInfo, dates);
 
   return `
-    ${renderTotalHeading(breakdown.total, dates.length, breakdown.hasDiscount, "estimate-heading")}
+    ${renderTotalHeading(breakdown.total, dates, breakdown.hasDiscount, "estimate-heading")}
     <div class="estimate-details">
       ${breakdown.lines.map((line) => `
         <div class="estimate-package">
@@ -419,7 +419,9 @@ function getRentalBreakdown(packageInfo, dates, options = {}) {
   };
 }
 
-function renderTotalHeading(total, days, hasDiscount, className) {
+function renderTotalHeading(total, dates, hasDiscount, className) {
+  const days = dates.length;
+  const periodText = days ? ` <span class="summary-separator">｜</span> ${formatCompactRentalPeriod(dates)}` : "";
   const discountText = hasDiscount
     ? ' <span class="summary-separator">｜</span> <span class="discount-label">已套用連租優惠</span>'
     : "";
@@ -427,7 +429,7 @@ function renderTotalHeading(total, days, hasDiscount, className) {
   return `
     <div class="${className}">
       <strong class="summary-total">總租金 ${formatAmount(total)} 元</strong>
-      <span class="summary-days">已選 ${days} 日${discountText}</span>
+      <span class="summary-days">已選 ${days} 日${periodText}${discountText}</span>
     </div>
   `;
 }
@@ -456,7 +458,7 @@ function renderDetailsReview(packageInfo, dates) {
   const locations = getSelectedLocations(dates);
 
   return `
-    ${renderTotalHeading(breakdown.total, dates.length, breakdown.hasDiscount, "review-heading")}
+    ${renderTotalHeading(breakdown.total, dates, breakdown.hasDiscount, "review-heading")}
     <div class="review-schedule">
       <span>取機時間：${formatPickupDateTime(dates)}</span>
       <span>取機地點：${locations.pickup.label} ｜ ${locations.pickup.feeLabel}</span>
@@ -484,6 +486,13 @@ function formatRentalPeriod(dates) {
   const end = formatShortDate(dates[dates.length - 1]);
 
   return start === end ? start : `${start} - ${end}`;
+}
+
+function formatCompactRentalPeriod(dates) {
+  const start = formatShortDate(dates[0]);
+  const end = formatShortDate(dates[dates.length - 1]);
+
+  return start === end ? start : `${start}-${end}`;
 }
 
 function formatPickupDateTime(dates) {
