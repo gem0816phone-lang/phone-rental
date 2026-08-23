@@ -61,6 +61,7 @@ const dropoffLocationOptions = [
   { label: "台北大巨蛋", fee: 100, feeLabel: "+ 100 元" },
   { label: "其他地點還", fee: 0, feeLabel: "私訊詳談" }
 ];
+const locationFeeWaiverMinDays = 4;
 
 const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
 const addOnItemIds = new Set(rentalItems.filter((item) => item.canCoexist).map((item) => item.id));
@@ -247,14 +248,34 @@ function renderFeeLines(packageInfo) {
 }
 
 function renderLocationOptions() {
-  pickupLocationSelect.innerHTML = renderLocationOptionList(pickupLocationOptions);
-  dropoffLocationSelect.innerHTML = renderLocationOptionList(dropoffLocationOptions);
+  const selectedPickup = pickupLocationSelect.value || pickupLocationOptions[0].label;
+  const selectedDropoff = dropoffLocationSelect.value || dropoffLocationOptions[0].label;
+  const dates = getSelectedDateList();
+
+  pickupLocationSelect.innerHTML = renderLocationOptionList(pickupLocationOptions, dates);
+  dropoffLocationSelect.innerHTML = renderLocationOptionList(dropoffLocationOptions, dates);
+  pickupLocationSelect.value = selectedPickup;
+  dropoffLocationSelect.value = selectedDropoff;
 }
 
-function renderLocationOptionList(options) {
-  return options.map((option) => `
-    <option value="${option.label}">${option.label} ｜ ${option.feeLabel}</option>
-  `).join("");
+function renderLocationOptionList(options, dates) {
+  return options.map((option) => {
+    const effectiveOption = getEffectiveLocationOption(option, dates);
+
+    return `
+    <option value="${option.label}">${option.label} ｜ ${effectiveOption.feeLabel}</option>
+  `;
+  }).join("");
+}
+
+function getEffectiveLocationOption(option, dates) {
+  const isWaived = dates.length >= locationFeeWaiverMinDays && option.fee > 0;
+
+  return {
+    ...option,
+    fee: isWaived ? 0 : option.fee,
+    feeLabel: isWaived ? "+ 0 元" : option.feeLabel
+  };
 }
 
 function renderSelectionSummary(packageInfo) {
@@ -355,7 +376,7 @@ function getRentalBreakdown(packageInfo, dates, options = {}) {
       hasDiscount: dailyRate === selectedPackage.discountedDaily
     };
   });
-  const locationFee = options.includeLocationFees ? getTotalLocationFee() : 0;
+  const locationFee = options.includeLocationFees ? getTotalLocationFee(dates) : 0;
 
   return {
     lines,
@@ -378,7 +399,7 @@ function renderDetailsReview(packageInfo, dates) {
   const packages = packageInfo.packages || [packageInfo];
   const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
   const detailItems = getSummaryDetailItems(packages);
-  const locations = getSelectedLocations();
+  const locations = getSelectedLocations(dates);
   const discountText = breakdown.hasDiscount ? ' ｜ <span class="discount-label">已套用連租優惠</span>' : "";
 
   return `
@@ -423,10 +444,10 @@ function formatShortDate(value) {
   return `${month}/${day}`;
 }
 
-function getSelectedLocations() {
+function getSelectedLocations(dates = getSelectedDateList()) {
   return {
-    pickup: getLocationOption(pickupLocationOptions, pickupLocationSelect.value),
-    dropoff: getLocationOption(dropoffLocationOptions, dropoffLocationSelect.value)
+    pickup: getEffectiveLocationOption(getLocationOption(pickupLocationOptions, pickupLocationSelect.value), dates),
+    dropoff: getEffectiveLocationOption(getLocationOption(dropoffLocationOptions, dropoffLocationSelect.value), dates)
   };
 }
 
@@ -434,8 +455,8 @@ function getLocationOption(options, value) {
   return options.find((option) => option.label === value) || options[0];
 }
 
-function getTotalLocationFee() {
-  const locations = getSelectedLocations();
+function getTotalLocationFee(dates = getSelectedDateList()) {
+  const locations = getSelectedLocations(dates);
   return locations.pickup.fee + locations.dropoff.fee;
 }
 
@@ -618,6 +639,7 @@ function updateSelectionSummary() {
   const days = dates.length;
 
   updateItemSelection();
+  renderLocationOptions();
   form.elements.selectedDates.value = dates.join(",");
   form.elements.rentalStart.value = dates[0] || "";
   form.elements.rentalEnd.value = dates[dates.length - 1] || "";
@@ -732,8 +754,8 @@ async function handleSubmit(event) {
   const reservationId = createReservationId();
   const dailyRate = getDailyRate(dates, packageInfo);
   const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
-  const locations = getSelectedLocations();
-  const locationFee = getTotalLocationFee();
+  const locations = getSelectedLocations(dates);
+  const locationFee = getTotalLocationFee(dates);
   const depositAmount = payload.get("depositOption") === getDepositNoIdLabel(packageInfo)
     ? packageInfo.depositNoId
     : packageInfo.depositWithId;
