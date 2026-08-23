@@ -14,9 +14,9 @@
       content="可單租手機、增距鏡，或組合租借；日曆會依選擇物品顯示可選與已滿日期。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-37" />
-    <script src="config.js?v=calendar-20260823-37" defer></script>
-    <script src="script.js?v=calendar-20260823-37" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-38" />
+    <script src="config.js?v=calendar-20260823-38" defer></script>
+    <script src="script.js?v=calendar-20260823-38" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -137,6 +137,12 @@
             </label>
             <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
           </form>
+
+          <dialog class="booked-dialog" id="bookedDialog" aria-labelledby="bookedDialogTitle">
+            <h3 id="bookedDialogTitle">此日期已滿</h3>
+            <div class="booked-dialog-body" id="bookedDialogBody"></div>
+            <button class="button primary" type="button" id="bookedDialogClose">知道了</button>
+          </dialog>
         </aside>
       </section>
 

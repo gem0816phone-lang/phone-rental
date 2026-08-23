@@ -797,6 +797,12 @@ textarea:focus {
   color: #8c2718;
 }
 
+.calendar-day.is-full:not(:disabled):hover,
+.calendar-day.is-full:not(:disabled):focus {
+  border-color: var(--coral);
+  outline: 3px solid rgba(216, 91, 72, 0.16);
+}
+
 .calendar-day.is-past {
   background: #f2f0eb;
   color: #9ba19a;
@@ -901,6 +907,50 @@ textarea:focus {
   background: #eaf4ff;
   color: #0c4f86;
   font-size: 14px;
+}
+
+.booked-dialog {
+  width: min(360px, calc(100vw - 36px));
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 22px 60px rgba(29, 38, 40, 0.2);
+}
+
+.booked-dialog::backdrop {
+  background: rgba(29, 38, 40, 0.34);
+}
+
+.booked-dialog h3 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+
+.booked-dialog-body {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.booked-dialog-body p {
+  margin: 0;
+}
+
+.booked-dialog-body ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.booked-dialog .button {
+  width: 100%;
 }
 
 .selected-review strong {

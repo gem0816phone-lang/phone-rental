@@ -93,6 +93,10 @@ const pickupLocationSelect = document.querySelector("#pickupLocation");
 const dropoffLocationSelect = document.querySelector("#dropoffLocation");
 const depositOptions = document.querySelector("#depositOptions");
 const depositNotice = document.querySelector("#depositNotice");
+const bookedDialog = document.querySelector("#bookedDialog");
+const bookedDialogTitle = document.querySelector("#bookedDialogTitle");
+const bookedDialogBody = document.querySelector("#bookedDialogBody");
+const bookedDialogClose = document.querySelector("#bookedDialogClose");
 const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
@@ -104,6 +108,7 @@ let selectedDates = new Set();
 let selectedPackageId = "";
 let selectedAddOnPackageIds = new Set();
 let unavailableDates = new Set(config.unavailableDates || []);
+let unavailableItemsByDate = {};
 let latestAvailabilityKey = "";
 
 init();
@@ -132,6 +137,12 @@ function bindEvents() {
   prevMonthButton.addEventListener("click", () => changeMonth(-1));
   nextMonthButton.addEventListener("click", () => changeMonth(1));
   continueButton.addEventListener("click", showDetailsStep);
+  bookedDialogClose.addEventListener("click", () => bookedDialog.close());
+  bookedDialog.addEventListener("click", (event) => {
+    if (event.target === bookedDialog) {
+      bookedDialog.close();
+    }
+  });
   form.elements.phone.addEventListener("input", () => {
     form.elements.phone.setCustomValidity("");
   });
@@ -418,6 +429,15 @@ function formatAmount(value) {
   return String(value);
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function renderDetailsReview(packageInfo, dates) {
   const packages = packageInfo.packages || [packageInfo];
   const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
@@ -635,9 +655,10 @@ function renderCalendar() {
         class="${classes.join(" ")}"
         type="button"
         data-date="${dateString}"
-        ${!canSelectDates || isPast || isFull ? "disabled" : ""}
+        data-full="${isFull ? "true" : "false"}"
+        ${!canSelectDates || isPast ? "disabled" : ""}
         aria-pressed="${isSelected ? "true" : "false"}"
-        aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}"
+        aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}${isFull ? "，點擊查看已租物品" : ""}"
       >
         <span class="date-number">${day}</span>
         <span class="date-status ${statusClass}">${isSelected ? "已選" : status}</span>
@@ -647,8 +668,46 @@ function renderCalendar() {
 
   calendarGrid.innerHTML = cells.join("");
   calendarGrid.querySelectorAll(".calendar-day:not(:disabled)").forEach((button) => {
-    button.addEventListener("click", () => toggleDate(button.dataset.date));
+    button.addEventListener("click", () => handleCalendarDayClick(button));
   });
+}
+
+function handleCalendarDayClick(button) {
+  if (button.dataset.full === "true") {
+    showBookedDateDialog(button.dataset.date);
+    return;
+  }
+
+  toggleDate(button.dataset.date);
+}
+
+function showBookedDateDialog(dateString) {
+  const dateLabel = formatDateLabel(dateString);
+  const labels = getUnavailableItemLabels(dateString);
+
+  if (!bookedDialog.showModal) {
+    window.alert(`${dateLabel} 已滿\n已被租走：\n${labels.join("\n")}`);
+    return;
+  }
+
+  bookedDialogTitle.textContent = `${dateLabel} 已滿`;
+  bookedDialogBody.innerHTML = `
+    <p>已被租走：</p>
+    <ul>
+      ${labels.map((label) => `<li>${escapeHtml(label)}</li>`).join("")}
+    </ul>
+  `;
+  bookedDialog.showModal();
+}
+
+function getUnavailableItemLabels(dateString) {
+  const labels = unavailableItemsByDate[dateString] || [];
+
+  if (labels.length) {
+    return labels;
+  }
+
+  return ["店家已設定此日期不可租"];
 }
 
 function toggleDate(dateString) {
@@ -877,6 +936,7 @@ function completeReservation(reservationId, dates, itemIds) {
   selectedPackageId = "";
   selectedAddOnPackageIds = new Set();
   unavailableDates = new Set(config.unavailableDates || []);
+  unavailableItemsByDate = {};
   renderDepositOptions();
   showItemStep();
   renderCalendar();
@@ -889,6 +949,7 @@ function loadAvailability() {
 
   if (!packageInfo) {
     unavailableDates = new Set(config.unavailableDates || []);
+    unavailableItemsByDate = {};
     availabilityStatus.textContent = "請先選擇物品。";
     renderCalendar();
     return;
@@ -897,6 +958,7 @@ function loadAvailability() {
   const requestKey = packageInfo.selectedItemIds.join("|");
   latestAvailabilityKey = requestKey;
   unavailableDates = getLocalUnavailableDates(packageInfo.selectedItemIds);
+  unavailableItemsByDate = getLocalUnavailableItemsByDate(packageInfo.selectedItemIds);
   renderCalendar();
 
   const endpoint = getAppsScriptUrl();
@@ -935,6 +997,10 @@ function loadAvailability() {
         ...getLocalUnavailableDates(packageInfo.selectedItemIds),
         ...payload.unavailableDates
       ]);
+      unavailableItemsByDate = mergeUnavailableItemMaps(
+        getLocalUnavailableItemsByDate(packageInfo.selectedItemIds),
+        payload.unavailableItemsByDate || {}
+      );
       availabilityStatus.textContent = `同步更新時間 ${formatTime(new Date())}`;
       renderCalendar();
       updateSelectionSummary();
@@ -1170,6 +1236,59 @@ function getLocalUnavailableDates(itemIds) {
   });
 
   return dates;
+}
+
+function getLocalUnavailableItemsByDate(itemIds) {
+  const targetItemIds = new Set(itemIds || []);
+  const itemsByDate = {};
+
+  Object.entries(localBookedDatesByItem).forEach(([itemId, dates]) => {
+    if (!targetItemIds.has(itemId)) {
+      return;
+    }
+
+    dates.forEach((date) => {
+      if (!itemsByDate[date]) {
+        itemsByDate[date] = [];
+      }
+
+      itemsByDate[date].push(getItemLabel(itemId));
+    });
+  });
+
+  return itemsByDate;
+}
+
+function mergeUnavailableItemMaps(...maps) {
+  const merged = {};
+
+  maps.forEach((map) => {
+    Object.entries(map || {}).forEach(([date, labels]) => {
+      const nextLabels = Array.isArray(labels) ? labels : [labels];
+
+      if (!merged[date]) {
+        merged[date] = [];
+      }
+
+      nextLabels.forEach((label) => {
+        if (label && !merged[date].includes(label)) {
+          merged[date].push(label);
+        }
+      });
+    });
+  });
+
+  return merged;
+}
+
+function getItemLabel(itemId) {
+  const item = itemMap.get(itemId);
+
+  if (!item) {
+    return "已預約品項";
+  }
+
+  return `${item.name}${item.spec ? ` ${item.spec}` : ""}`;
 }
 
 function getSelectedDateList() {

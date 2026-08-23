@@ -4,6 +4,11 @@ const ITEM_PHONE = "vivo-x300-ultra";
 const ITEM_LENS = "g2-ultra-400mm";
 const ITEM_RAYBAN = "ray-ban-meta";
 const KNOWN_ITEM_IDS = [ITEM_PHONE, ITEM_LENS, ITEM_RAYBAN];
+const ITEM_LABELS = {
+  [ITEM_PHONE]: "vivo X300 Ultra 12/256GB",
+  [ITEM_LENS]: "G2 Ultra 增距鏡 400mm",
+  [ITEM_RAYBAN]: "Ray-Ban Meta 智慧眼鏡 方框M"
+};
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
 const STATUS_OPTIONS = ["新預約", "已確認", "已取消"];
 
@@ -49,11 +54,13 @@ function doGet(e) {
 
   if (params.action === "availability") {
     const requestedItemIds = getRequestedItemIds_(params);
+    const unavailableItemsByDate = getBookedItemsByDate_(requestedItemIds);
 
     return output_(
       {
         ok: true,
-        unavailableDates: getBookedDates_(requestedItemIds),
+        unavailableDates: Object.keys(unavailableItemsByDate).sort(),
+        unavailableItemsByDate,
         requestedItems: requestedItemIds,
         generatedAt: new Date().toISOString()
       },
@@ -422,6 +429,55 @@ function getBookedDates_(targetItemIds) {
   return Object.keys(bookedDateSet).sort();
 }
 
+function getBookedItemsByDate_(targetItemIds) {
+  const sheet = getReservationSheet_();
+
+  if (sheet.getLastRow() < 2) {
+    return {};
+  }
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(canonicalHeader_);
+  const indexes = buildHeaderIndex_(headers);
+  const requestedItemSet = toSet_(targetItemIds || []);
+  const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
+  const bookedItemsByDate = {};
+
+  values.slice(1).forEach((row) => {
+    const status = getCell_(row, indexes, "狀態");
+    const reservationId = getCell_(row, indexes, "預約編號");
+
+    if (reservationId.indexOf("TEST-") === 0 || isCanceled_(status)) {
+      return;
+    }
+
+    const rowItemIds = getItemIdsFromRow_(row, indexes);
+    const overlapItemIds = shouldFilterByItem
+      ? rowItemIds.filter((itemId) => requestedItemSet[itemId])
+      : rowItemIds;
+
+    if (!overlapItemIds.length) {
+      return;
+    }
+
+    getDatesFromRow_(row, indexes).forEach((date) => {
+      if (!bookedItemsByDate[date]) {
+        bookedItemsByDate[date] = [];
+      }
+
+      overlapItemIds.forEach((itemId) => {
+        const label = getItemLabel_(itemId);
+
+        if (!bookedItemsByDate[date].includes(label)) {
+          bookedItemsByDate[date].push(label);
+        }
+      });
+    });
+  });
+
+  return bookedItemsByDate;
+}
+
 function getBookedDateSet_(targetItemIds) {
   const sheet = getReservationSheet_();
 
@@ -478,6 +534,10 @@ function getItemIdsFromRow_(row, indexes) {
 
   if (/vivo|x300/.test(itemText)) {
     inferred[ITEM_PHONE] = true;
+  }
+
+  if (/ray.?ban|meta|智慧眼鏡|方框/i.test(itemText)) {
+    inferred[ITEM_RAYBAN] = true;
   }
 
   if (!Object.keys(inferred).length && getCell_(row, indexes, "手機型號")) {
@@ -658,6 +718,10 @@ function toSet_(values) {
   });
 
   return set;
+}
+
+function getItemLabel_(itemId) {
+  return ITEM_LABELS[itemId] || "已預約品項";
 }
 
 function isCanceled_(status) {
