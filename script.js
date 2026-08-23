@@ -227,6 +227,58 @@ function renderFeeLines(packageInfo) {
   `;
 }
 
+function renderSelectionSummary(packageInfo) {
+  const packages = packageInfo.packages || [packageInfo];
+  const headings = packages.map(renderSummaryHeading).join("");
+  const detailItems = getSummaryDetailItems(packages);
+  const details = detailItems.map((item, index) => `
+    <span>${index + 1}. ${item.name}${item.spec ? ` <span class="spec-badge">${item.spec}</span>` : ""}</span>
+  `).join("");
+
+  return `
+    <div class="summary-headings">${headings}</div>
+    <div class="summary-details">${details}</div>
+  `;
+}
+
+function renderSummaryHeading(packageInfo) {
+  if (packageInfo.id === comboPackage.id) {
+    return `<strong class="summary-heading">${packageInfo.displayName}</strong>`;
+  }
+
+  const item = packageInfo.components[0];
+
+  return `
+    <strong class="summary-heading">
+      <span>[${packageInfo.typeLabel}]</span>
+      <span>${item.name}</span>
+      <span class="spec-badge">${item.spec}</span>
+    </strong>
+  `;
+}
+
+function getSummaryDetailItems(packages) {
+  const details = [];
+
+  packages.forEach((packageInfo) => {
+    if (packageInfo.id === comboPackage.id) {
+      details.push(
+        { name: "vivo X300 Ultra", spec: "12/256GB" },
+        { name: "G2 Ultra 增距鏡", spec: "400mm" },
+        { name: "專用攝影手機殼" },
+        { name: "迷你手機支架1.3M(收縮後僅14CM)" }
+      );
+      return;
+    }
+
+    packageInfo.components.forEach((item) => {
+      details.push({ name: item.name, spec: item.spec });
+    });
+  });
+
+  return details;
+}
+
 function applyBusinessConfig() {
   const lineUrl = config.businessLineUrl || "https://line.me";
   const phoneNumber = config.businessPhone || "0900-000-000";
@@ -302,21 +354,8 @@ function updateItemSelection() {
     return;
   }
 
-  if (selectedPackageIds.has(comboPackage.id)) {
-    const comboInfo = getComboPackageInfo();
-
-    itemSummaryBox.hidden = false;
-    itemSummaryBox.innerHTML = `
-      <strong>${comboInfo.displayName}</strong>
-      <span>1.vivo X300 Ultra <strong>12/256GB</strong></span>
-      <span>2.G2 Ultra 增距鏡 <strong>400mm</strong></span>
-      <span>3.專用攝影手機殼</span>
-      <span>4.迷你手機支架1.3M(收縮後僅14CM)</span>
-    `;
-  } else {
-    itemSummaryBox.hidden = true;
-    itemSummaryBox.innerHTML = "";
-  }
+  itemSummaryBox.hidden = false;
+  itemSummaryBox.innerHTML = renderSelectionSummary(packageInfo);
 
   packageSummary.innerHTML = renderPackageSummary(packageInfo);
 }

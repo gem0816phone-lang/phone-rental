@@ -439,6 +439,24 @@ h3 {
   font-size: 16px;
 }
 
+.summary-headings,
+.summary-details {
+  display: grid;
+  gap: 6px;
+}
+
+.summary-heading,
+.summary-details span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-details {
+  padding-top: 4px;
+}
+
 .rental-summary {
   display: grid;
   grid-template-columns: 118px minmax(0, 1fr);
