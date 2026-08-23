@@ -50,12 +50,6 @@ const comboPackage = {
 
 const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
 const addOnItemIds = new Set(rentalItems.filter((item) => item.canCoexist).map((item) => item.id));
-const currency = new Intl.NumberFormat("zh-TW", {
-  style: "currency",
-  currency: "TWD",
-  maximumFractionDigits: 0
-});
-
 const weekdayFormatter = new Intl.DateTimeFormat("zh-TW", { weekday: "short" });
 const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long" });
 const config = window.PHONE_RENTAL_CONFIG || {};
@@ -292,6 +286,62 @@ function getSummaryDetailItems(packages) {
   return details;
 }
 
+function renderDateEstimate(packageInfo, dates) {
+  if (!dates.length) {
+    return `
+      <div class="estimate-heading"><strong>已選 0 日 ｜ 總租金 0 元</strong></div>
+      <div class="estimate-details">
+        <span>請選擇租借日期</span>
+      </div>
+    `;
+  }
+
+  const breakdown = getRentalBreakdown(packageInfo, dates);
+  const discountText = breakdown.hasDiscount ? " ｜ 已套用連租優惠" : "";
+
+  return `
+    <div class="estimate-heading">
+      <strong>已選 ${dates.length} 日 ｜ 總租金 ${formatAmount(breakdown.total)} 元${discountText}</strong>
+    </div>
+    <div class="estimate-details">
+      ${breakdown.lines.map((line) => `
+        <div class="estimate-package">
+          <strong>${line.title}</strong>
+          <span>${formatAmount(line.dailyRate)} 元 / 日 ｜ 共 ${formatAmount(line.total)} 元</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getRentalBreakdown(packageInfo, dates) {
+  const packages = packageInfo.packages || [packageInfo];
+  const lines = packages.map((selectedPackage) => {
+    const dailyRate = getDailyRate(dates, selectedPackage);
+
+    return {
+      title: formatPackageHeading(selectedPackage),
+      dailyRate,
+      total: dailyRate * dates.length,
+      hasDiscount: dailyRate === selectedPackage.discountedDaily
+    };
+  });
+
+  return {
+    lines,
+    total: lines.reduce((total, line) => total + line.total, 0),
+    hasDiscount: lines.some((line) => line.hasDiscount)
+  };
+}
+
+function formatPackageHeading(packageInfo) {
+  return `[${packageInfo.typeLabel}] ${packageInfo.components.map((item) => item.name).join(" + ")}`;
+}
+
+function formatAmount(value) {
+  return String(value);
+}
+
 function applyBusinessConfig() {
   const lineUrl = config.businessLineUrl || "https://line.me";
   const phoneNumber = config.businessPhone || "0900-000-000";
@@ -474,10 +524,7 @@ function updateSelectionSummary() {
   }
 
   if (!days) {
-    estimateBox.innerHTML = `
-      <strong>${packageInfo.displayName}</strong>
-      請先在日曆上選擇要租的日期。
-    `;
+    estimateBox.innerHTML = renderDateEstimate(packageInfo, dates);
     selectedDatesReview.textContent = "";
     return;
   }
@@ -487,16 +534,11 @@ function updateSelectionSummary() {
   const dateText = dates.map(formatDateLabel).join("、");
   const depositOption = form.elements.depositOption?.value || "尚未選擇押金方式";
 
-  estimateBox.innerHTML = `
-    <strong>已選 ${days} 天，預估租金 ${currency.format(rentalTotal)}</strong>
-    <span>${packageInfo.displayName}</span>
-    <span>${dateText}</span>
-    <span>${dailyRate} 元 / 日${dailyRate === packageInfo.discountedDaily ? "，已套用連租優惠" : ""}</span>
-  `;
+  estimateBox.innerHTML = renderDateEstimate(packageInfo, dates);
   selectedDatesReview.innerHTML = `
     <strong>${packageInfo.displayName}</strong>
     <span>租借日期：${dateText}</span>
-    <span>租金：${currency.format(rentalTotal)}（${dailyRate} 元 / 日），押金方式：${depositOption}</span>
+    <span>租金：${formatAmount(rentalTotal)} 元（${dailyRate} 元 / 日），押金方式：${depositOption}</span>
   `;
 }
 

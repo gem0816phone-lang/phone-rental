@@ -438,6 +438,7 @@ h3 {
   --summary-spec-bg: #c8e5dc;
   --summary-spec-border: rgba(13, 123, 117, 0.42);
   --summary-spec-color: var(--teal-dark);
+  --summary-divider: rgba(13, 123, 117, 0.22);
   gap: 4px;
   min-height: 72px;
   padding: 14px;
@@ -452,6 +453,7 @@ h3 {
   --summary-spec-bg: #d5eafe;
   --summary-spec-border: rgba(12, 79, 134, 0.36);
   --summary-spec-color: #0c4f86;
+  --summary-divider: rgba(12, 79, 134, 0.2);
   border-color: #b8d8f6;
   background: #eaf4ff;
   color: #0c4f86;
@@ -477,7 +479,9 @@ h3 {
 }
 
 .summary-details {
-  padding-top: 4px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--summary-divider);
 }
 
 .summary-detail-spec {
@@ -821,6 +825,8 @@ textarea:focus {
 }
 
 .estimate {
+  display: grid;
+  gap: 6px;
   min-height: 76px;
   padding: 14px;
   border: 1px solid #c9e2dc;
@@ -834,6 +840,26 @@ textarea:focus {
   display: block;
   color: var(--ink);
   font-size: 18px;
+}
+
+.estimate-details {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(13, 123, 117, 0.22);
+}
+
+.estimate-details > span {
+  color: var(--teal-dark);
+}
+
+.estimate-package {
+  display: grid;
+  gap: 2px;
+}
+
+.estimate-package strong {
+  font-size: 15px;
 }
 
 .selected-review {
