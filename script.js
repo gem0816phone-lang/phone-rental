@@ -27,6 +27,7 @@ const comboPackage = {
   id: "combo-vivo-g2",
   typeLabel: "組合",
   selectedItemIds: ["vivo-x300-ultra", "g2-ultra-400mm"],
+  image: "vivo x300 ultra + G2 ultra 增距鏡 400mm.jpg",
   daily: 900,
   discountedDaily: 700,
   discountMinDays: 4,
@@ -76,6 +77,7 @@ const today = startOfDay(new Date());
 const localBookedDatesByItem = {};
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedDates = new Set();
+let selectedPackageId = "";
 let unavailableDates = new Set(config.unavailableDates || []);
 let latestAvailabilityKey = "";
 
@@ -93,8 +95,8 @@ function init() {
 
 function bindEvents() {
   itemGrid.addEventListener("change", (event) => {
-    if (event.target.matches('input[name="itemIds"]')) {
-      handleItemSelectionChange();
+    if (event.target.matches('input[name="packageId"]')) {
+      handleItemSelectionChange(event);
     }
   });
   itemContinueButton.addEventListener("click", showDateStep);
@@ -104,7 +106,7 @@ function bindEvents() {
   continueButton.addEventListener("click", showDetailsStep);
   editDatesButton.addEventListener("click", showDateStep);
   form.addEventListener("change", (event) => {
-    if (!event.target.matches('input[name="itemIds"]')) {
+    if (!event.target.matches('input[name="packageId"]')) {
       updateSelectionSummary();
     }
   });
@@ -112,21 +114,76 @@ function bindEvents() {
 }
 
 function renderItemOptions() {
-  itemGrid.innerHTML = rentalItems.map((item) => `
-    <label class="item-card" data-item-id="${item.id}">
-      <input class="item-check" type="checkbox" name="itemIds" value="${item.id}" />
-      <img class="item-photo" src="${item.image}" alt="${item.name} ${item.spec}" />
+  itemGrid.innerHTML = getPackageOptions().map((packageInfo) => `
+    <label class="item-card" data-package-id="${packageInfo.id}">
+      <input class="item-check" type="checkbox" name="packageId" value="${packageInfo.id}" />
+      <img class="item-photo" src="${packageInfo.image}" alt="${packageInfo.displayName}" />
       <span class="item-checkmark" aria-hidden="true"></span>
       <span class="item-content">
-        <span class="item-title">
-          <strong>[單租] ${item.name}</strong>
-          <span class="spec-badge">${item.spec}</span>
-        </span>
-        <span>租金：${item.daily} 元 / 日 ｜ 連續租借4日以上 ${item.discountedDaily} / 日</span>
-        <span>押金：${item.depositWithId} 元 + 證件正本 ｜ ${item.depositNoId} 元 (免證件)</span>
+        <span class="item-title">${renderOptionTitle(packageInfo)}</span>
+        <span>${formatRateRule(packageInfo)}</span>
+        <span>${formatDepositRule(packageInfo)}</span>
       </span>
     </label>
   `).join("");
+}
+
+function getPackageOptions() {
+  return [
+    ...rentalItems.map((item) => getSinglePackageInfo(item.id)),
+    getComboPackageInfo()
+  ].filter(Boolean);
+}
+
+function getSinglePackageInfo(itemId) {
+  const item = itemMap.get(itemId);
+
+  if (!item) {
+    return null;
+  }
+
+  return {
+    id: `single-${item.id}`,
+    typeLabel: "單租",
+    selectedItemIds: [item.id],
+    components: [item],
+    image: item.image,
+    displayName: `[單租] ${item.name} ${item.spec}`,
+    specSummary: item.spec,
+    daily: item.daily,
+    discountedDaily: item.discountedDaily,
+    discountMinDays: item.discountMinDays,
+    depositWithId: item.depositWithId,
+    depositNoId: item.depositNoId
+  };
+}
+
+function getComboPackageInfo() {
+  const components = comboPackage.selectedItemIds.map((itemId) => itemMap.get(itemId));
+
+  if (components.some((item) => !item)) {
+    return null;
+  }
+
+  return {
+    ...comboPackage,
+    components,
+    displayName: `[組合] ${components.map((item) => `${item.name} ${item.spec}`).join(" + ")}`,
+    specSummary: components.map((item) => item.spec).join(" + ")
+  };
+}
+
+function renderOptionTitle(packageInfo) {
+  return `
+    <span class="package-type">[${packageInfo.typeLabel}]</span>
+    ${packageInfo.components.map((item, index) => `
+      ${index > 0 ? '<span class="plus-sign">+</span>' : ""}
+      <span class="title-pair">
+        <strong>${item.name}</strong>
+        <span class="spec-badge">${item.spec}</span>
+      </span>
+    `).join("")}
+  `;
 }
 
 function applyBusinessConfig() {
@@ -144,7 +201,25 @@ function applyBusinessConfig() {
   });
 }
 
-function handleItemSelectionChange() {
+function handleItemSelectionChange(event) {
+  const clickedPackageId = event.target.value;
+  const isChecking = event.target.checked;
+  const previousPackageId = selectedPackageId;
+
+  if (!isChecking && previousPackageId === clickedPackageId) {
+    selectedPackageId = "";
+  } else if (clickedPackageId === comboPackage.id) {
+    selectedPackageId = comboPackage.id;
+  } else if (
+    previousPackageId &&
+    previousPackageId !== comboPackage.id &&
+    previousPackageId !== clickedPackageId
+  ) {
+    selectedPackageId = comboPackage.id;
+  } else {
+    selectedPackageId = clickedPackageId;
+  }
+
   selectedDates = new Set();
   clearStatus();
   updateItemSelection();
@@ -156,10 +231,12 @@ function handleItemSelectionChange() {
 
 function updateItemSelection() {
   const selectedItemIds = getSelectedItemIds();
-  const packageInfo = getPackageInfo(selectedItemIds);
+  const packageInfo = getPackageInfo();
+
+  syncPackageInputs();
 
   document.querySelectorAll(".item-card").forEach((card) => {
-    card.classList.toggle("is-selected", selectedItemIds.includes(card.dataset.itemId));
+    card.classList.toggle("is-selected", card.dataset.packageId === selectedPackageId);
   });
 
   form.elements.selectedItems.value = selectedItemIds.join(",");
@@ -459,6 +536,7 @@ function completeReservation(reservationId, dates, itemIds) {
 
   form.reset();
   selectedDates = new Set();
+  selectedPackageId = "";
   unavailableDates = new Set(config.unavailableDates || []);
   renderDepositOptions();
   showItemStep();
@@ -567,57 +645,33 @@ function setActiveStep(step) {
 }
 
 function getSelectedItemIds() {
-  return [...form.querySelectorAll('input[name="itemIds"]:checked')]
-    .map((input) => input.value)
-    .filter((itemId) => itemMap.has(itemId));
+  return getPackageInfo()?.selectedItemIds.slice() || [];
 }
 
-function getPackageInfo(selectedItemIds = getSelectedItemIds()) {
-  const uniqueIds = [...new Set(selectedItemIds)].filter((itemId) => itemMap.has(itemId));
-
-  if (uniqueIds.length === 0) {
+function getPackageInfo(packageId = selectedPackageId) {
+  if (!packageId) {
     return null;
   }
 
-  if (
-    uniqueIds.length === 2 &&
-    comboPackage.selectedItemIds.every((itemId) => uniqueIds.includes(itemId))
-  ) {
-    const components = comboPackage.selectedItemIds.map((itemId) => itemMap.get(itemId));
-
-    return {
-      ...comboPackage,
-      components,
-      displayName: `[組合] ${components.map((item) => `${item.name} ${item.spec}`).join(" + ")}`,
-      specSummary: components.map((item) => item.spec).join(" + ")
-    };
+  if (packageId === comboPackage.id) {
+    return getComboPackageInfo();
   }
 
-  if (uniqueIds.length === 1) {
-    const item = itemMap.get(uniqueIds[0]);
-
-    return {
-      id: `single-${item.id}`,
-      typeLabel: "單租",
-      selectedItemIds: [item.id],
-      components: [item],
-      displayName: `[單租] ${item.name} ${item.spec}`,
-      specSummary: item.spec,
-      daily: item.daily,
-      discountedDaily: item.discountedDaily,
-      discountMinDays: item.discountMinDays,
-      depositWithId: item.depositWithId,
-      depositNoId: item.depositNoId
-    };
+  if (packageId.startsWith("single-")) {
+    return getSinglePackageInfo(packageId.replace("single-", ""));
   }
 
   return null;
 }
 
+function syncPackageInputs() {
+  form.querySelectorAll('input[name="packageId"]').forEach((input) => {
+    input.checked = input.value === selectedPackageId;
+  });
+}
+
 function renderPackageSummary(packageInfo) {
-  const images = packageInfo.components.map((item) => `
-    <img class="summary-photo" src="${item.image}" alt="${item.name} ${item.spec}" />
-  `).join("");
+  const images = `<img class="summary-photo" src="${packageInfo.image}" alt="${packageInfo.displayName}" />`;
   const componentNames = packageInfo.components.map((item) => `
     <span class="component-name">
       ${item.name}
@@ -675,7 +729,7 @@ function areConsecutiveDates(dates) {
 }
 
 function formatRateRule(packageInfo) {
-  return `租金：${packageInfo.daily} 元 / 日 ｜ 連續租借4日以上 ${packageInfo.discountedDaily} / 日`;
+  return `租金：${packageInfo.daily} 元 / 日 ｜ 連續租借4日以上 ${packageInfo.discountedDaily} 元 / 日`;
 }
 
 function formatDepositRule(packageInfo) {

@@ -321,7 +321,6 @@ h3 {
 }
 
 .item-content,
-.item-title,
 .selection-summary {
   display: grid;
 }
@@ -336,10 +335,25 @@ h3 {
 }
 
 .item-title {
-  gap: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   color: var(--ink);
   font-size: 17px;
   line-height: 1.25;
+}
+
+.plus-sign {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.title-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .spec-badge {
@@ -443,6 +457,7 @@ h3 {
 
 .component-name {
   gap: 6px;
+  white-space: nowrap;
 }
 
 .package-type {
