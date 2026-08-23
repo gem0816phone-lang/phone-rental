@@ -1,17 +1,40 @@
-const phone = {
-  id: "vivo-x300-ultra",
-  name: "vivo X300 Ultra",
-  storage: "12/256GB",
-  daily: 700,
-  discountedDaily: 600,
+const rentalItems = [
+  {
+    id: "vivo-x300-ultra",
+    name: "vivo X300 Ultra",
+    spec: "12/256GB",
+    image: "vivo x300 ultra.jpg",
+    daily: 700,
+    discountedDaily: 600,
+    discountMinDays: 4,
+    depositWithId: 3000,
+    depositNoId: 30000
+  },
+  {
+    id: "g2-ultra-400mm",
+    name: "G2 ultra 增距鏡",
+    spec: "400mm",
+    image: "G2 ultra 增距鏡 400mm.jpg",
+    daily: 300,
+    discountedDaily: 200,
+    discountMinDays: 4,
+    depositWithId: 1000,
+    depositNoId: 10000
+  }
+];
+
+const comboPackage = {
+  id: "combo-vivo-g2",
+  typeLabel: "組合",
+  selectedItemIds: ["vivo-x300-ultra", "g2-ultra-400mm"],
+  daily: 900,
+  discountedDaily: 700,
   discountMinDays: 4,
-  depositWithId: 5000,
-  depositNoId: 30000,
-  badge: "唯一機型",
-  color: "#d8eee8",
-  note: "12/256GB，適合旅遊、拍攝、備用機"
+  depositWithId: 4000,
+  depositNoId: 40000
 };
 
+const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
 const currency = new Intl.NumberFormat("zh-TW", {
   style: "currency",
   currency: "TWD",
@@ -24,44 +47,86 @@ const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 const form = document.querySelector("#reservationForm");
+const bookingTitle = document.querySelector("#booking-title");
+const itemStep = document.querySelector("#itemStep");
 const dateStep = document.querySelector("#dateStep");
 const detailsStep = document.querySelector("#detailsStep");
+const itemStepPill = document.querySelector("#itemStepPill");
 const dateStepPill = document.querySelector("#dateStepPill");
 const detailsStepPill = document.querySelector("#detailsStepPill");
+const itemGrid = document.querySelector("#itemGrid");
+const itemSummaryBox = document.querySelector("#itemSummaryBox");
+const itemContinueButton = document.querySelector("#itemContinueButton");
+const packageSummary = document.querySelector("#packageSummary");
 const calendarGrid = document.querySelector("#calendarGrid");
 const monthLabel = document.querySelector("#monthLabel");
 const prevMonthButton = document.querySelector("#prevMonthButton");
 const nextMonthButton = document.querySelector("#nextMonthButton");
 const continueButton = document.querySelector("#continueButton");
+const editItemsButton = document.querySelector("#editItemsButton");
 const editDatesButton = document.querySelector("#editDatesButton");
 const estimateBox = document.querySelector("#estimateBox");
 const selectedDatesReview = document.querySelector("#selectedDatesReview");
+const depositOptions = document.querySelector("#depositOptions");
 const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
 
 const today = startOfDay(new Date());
+const localBookedDatesByItem = {};
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-const selectedDates = new Set();
+let selectedDates = new Set();
 let unavailableDates = new Set(config.unavailableDates || []);
+let latestAvailabilityKey = "";
 
 init();
 
 function init() {
+  renderItemOptions();
+  renderDepositOptions();
   applyBusinessConfig();
   bindEvents();
+  showItemStep();
   renderCalendar();
   updateSelectionSummary();
-  loadAvailability();
 }
 
 function bindEvents() {
+  itemGrid.addEventListener("change", (event) => {
+    if (event.target.matches('input[name="itemIds"]')) {
+      handleItemSelectionChange();
+    }
+  });
+  itemContinueButton.addEventListener("click", showDateStep);
+  editItemsButton.addEventListener("click", showItemStep);
   prevMonthButton.addEventListener("click", () => changeMonth(-1));
   nextMonthButton.addEventListener("click", () => changeMonth(1));
   continueButton.addEventListener("click", showDetailsStep);
   editDatesButton.addEventListener("click", showDateStep);
-  form.addEventListener("change", updateSelectionSummary);
+  form.addEventListener("change", (event) => {
+    if (!event.target.matches('input[name="itemIds"]')) {
+      updateSelectionSummary();
+    }
+  });
   form.addEventListener("submit", handleSubmit);
+}
+
+function renderItemOptions() {
+  itemGrid.innerHTML = rentalItems.map((item) => `
+    <label class="item-card" data-item-id="${item.id}">
+      <input class="item-check" type="checkbox" name="itemIds" value="${item.id}" />
+      <img class="item-photo" src="${item.image}" alt="${item.name} ${item.spec}" />
+      <span class="item-checkmark" aria-hidden="true"></span>
+      <span class="item-content">
+        <span class="item-title">
+          <strong>[單租] ${item.name}</strong>
+          <span class="spec-badge">${item.spec}</span>
+        </span>
+        <span>租金：${item.daily} 元 / 日 ｜ 連續租借4日以上 ${item.discountedDaily} / 日</span>
+        <span>押金：${item.depositWithId} 元 + 證件正本 ｜ ${item.depositNoId} 元 (免證件)</span>
+      </span>
+    </label>
+  `).join("");
 }
 
 function applyBusinessConfig() {
@@ -79,6 +144,44 @@ function applyBusinessConfig() {
   });
 }
 
+function handleItemSelectionChange() {
+  selectedDates = new Set();
+  clearStatus();
+  updateItemSelection();
+  renderDepositOptions();
+  renderCalendar();
+  updateSelectionSummary();
+  loadAvailability();
+}
+
+function updateItemSelection() {
+  const selectedItemIds = getSelectedItemIds();
+  const packageInfo = getPackageInfo(selectedItemIds);
+
+  document.querySelectorAll(".item-card").forEach((card) => {
+    card.classList.toggle("is-selected", selectedItemIds.includes(card.dataset.itemId));
+  });
+
+  form.elements.selectedItems.value = selectedItemIds.join(",");
+  form.elements.model.value = packageInfo?.id || "";
+  form.elements.rentalPackage.value = packageInfo?.displayName || "";
+  itemContinueButton.disabled = selectedItemIds.length === 0;
+
+  if (!packageInfo) {
+    itemSummaryBox.textContent = "請先選擇要租的物品，可多選。";
+    packageSummary.innerHTML = "";
+    availabilityStatus.textContent = "請先選擇物品。";
+    return;
+  }
+
+  itemSummaryBox.innerHTML = `
+    <strong>${packageInfo.displayName}</strong>
+    <span>${formatRateRule(packageInfo)}</span>
+    <span>${formatDepositRule(packageInfo)}</span>
+  `;
+  packageSummary.innerHTML = renderPackageSummary(packageInfo);
+}
+
 function changeMonth(delta) {
   visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1);
   renderCalendar();
@@ -90,6 +193,8 @@ function renderCalendar() {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const packageInfo = getPackageInfo();
+  const canSelectDates = Boolean(packageInfo);
 
   monthLabel.textContent = monthFormatter.format(visibleMonth);
   prevMonthButton.disabled = visibleMonth <= minMonth;
@@ -105,14 +210,22 @@ function renderCalendar() {
     const dateString = toDateInputValue(date);
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isPast = date < today;
-    const isFull = unavailableDates.has(dateString);
+    const isFull = canSelectDates && unavailableDates.has(dateString);
     const isSelected = selectedDates.has(dateString);
-    const status = isPast ? "已過" : isFull ? "已滿" : "可選";
-    const statusClass = isPast ? "status-past" : isSelected ? "status-selected" : isFull ? "status-full" : "status-available";
+    const status = !canSelectDates ? "先選" : isPast ? "已過" : isFull ? "已滿" : "可選";
+    const statusClass = !canSelectDates
+      ? "status-past"
+      : isPast
+        ? "status-past"
+        : isSelected
+          ? "status-selected"
+          : isFull
+            ? "status-full"
+            : "status-available";
     const classes = ["calendar-day"];
 
     if (isWeekend) classes.push("is-weekend");
-    if (isPast) classes.push("is-past");
+    if (isPast || !canSelectDates) classes.push("is-past");
     if (isFull) classes.push("is-full");
     if (isSelected) classes.push("is-selected");
 
@@ -121,7 +234,7 @@ function renderCalendar() {
         class="${classes.join(" ")}"
         type="button"
         data-date="${dateString}"
-        ${isPast || isFull ? "disabled" : ""}
+        ${!canSelectDates || isPast || isFull ? "disabled" : ""}
         aria-pressed="${isSelected ? "true" : "false"}"
         aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}"
       >
@@ -150,64 +263,115 @@ function toggleDate(dateString) {
 }
 
 function updateSelectionSummary() {
+  const packageInfo = getPackageInfo();
   const dates = getSelectedDateList();
   const days = dates.length;
 
+  updateItemSelection();
   form.elements.selectedDates.value = dates.join(",");
   form.elements.rentalStart.value = dates[0] || "";
   form.elements.rentalEnd.value = dates[dates.length - 1] || "";
-  continueButton.disabled = days === 0;
+  continueButton.disabled = !packageInfo || days === 0;
 
-  if (!days) {
-    estimateBox.textContent = "請先在日曆上選擇要租的日期。";
+  if (!packageInfo) {
+    estimateBox.textContent = "請先選擇要租的物品。";
     selectedDatesReview.textContent = "";
     return;
   }
 
-  const dailyRate = getDailyRate(dates);
+  if (!days) {
+    estimateBox.innerHTML = `
+      <strong>${packageInfo.displayName}</strong>
+      請先在日曆上選擇要租的日期。
+    `;
+    selectedDatesReview.textContent = "";
+    return;
+  }
+
+  const dailyRate = getDailyRate(dates, packageInfo);
   const rentalTotal = days * dailyRate;
   const dateText = dates.map(formatDateLabel).join("、");
   const depositOption = form.elements.depositOption?.value || "尚未選擇押金方式";
 
   estimateBox.innerHTML = `
     <strong>已選 ${days} 天，預估租金 ${currency.format(rentalTotal)}</strong>
-    ${dateText}<br />
-    <span>${dailyRate} 元 / 日${dailyRate === phone.discountedDaily ? "，已套用連租優惠" : ""}</span>
+    <span>${packageInfo.displayName}</span>
+    <span>${dateText}</span>
+    <span>${dailyRate} 元 / 日${dailyRate === packageInfo.discountedDaily ? "，已套用連租優惠" : ""}</span>
   `;
   selectedDatesReview.innerHTML = `
-    <strong>${phone.name} ${phone.storage}</strong>
+    <strong>${packageInfo.displayName}</strong>
     <span>租借日期：${dateText}</span>
     <span>租金：${currency.format(rentalTotal)}（${dailyRate} 元 / 日），押金方式：${depositOption}</span>
   `;
 }
 
+function showItemStep() {
+  itemStep.hidden = false;
+  dateStep.hidden = true;
+  detailsStep.hidden = true;
+  setActiveStep("item");
+  clearStatus();
+  updateItemSelection();
+  updateSelectionSummary();
+}
+
+function showDateStep() {
+  const packageInfo = getPackageInfo();
+
+  if (!packageInfo) {
+    showItemStep();
+    showStatus("error", "請先選擇要租的物品。");
+    return;
+  }
+
+  itemStep.hidden = true;
+  dateStep.hidden = false;
+  detailsStep.hidden = true;
+  setActiveStep("date");
+  clearStatus();
+  renderDepositOptions();
+  renderCalendar();
+  updateSelectionSummary();
+  loadAvailability();
+}
+
 function showDetailsStep() {
+  const packageInfo = getPackageInfo();
+
+  if (!packageInfo) {
+    showItemStep();
+    showStatus("error", "請先選擇要租的物品。");
+    return;
+  }
+
   if (!selectedDates.size) {
     showStatus("error", "請先選擇至少一天可選日期。");
     return;
   }
 
+  itemStep.hidden = true;
   dateStep.hidden = true;
   detailsStep.hidden = false;
-  dateStepPill.classList.remove("is-active");
-  detailsStepPill.classList.add("is-active");
+  setActiveStep("details");
   clearStatus();
+  renderDepositOptions();
   updateSelectionSummary();
-}
-
-function showDateStep() {
-  dateStep.hidden = false;
-  detailsStep.hidden = true;
-  dateStepPill.classList.add("is-active");
-  detailsStepPill.classList.remove("is-active");
-  clearStatus();
 }
 
 async function handleSubmit(event) {
   event.preventDefault();
   clearStatus();
 
+  const packageInfo = getPackageInfo();
+  const selectedItemIds = getSelectedItemIds();
   const dates = getSelectedDateList();
+
+  if (!packageInfo) {
+    showItemStep();
+    showStatus("error", "請先選擇要租的物品。");
+    return;
+  }
 
   if (!dates.length) {
     showDateStep();
@@ -229,13 +393,18 @@ async function handleSubmit(event) {
 
   const payload = new FormData(form);
   const reservationId = createReservationId();
-  const dailyRate = getDailyRate(dates);
+  const dailyRate = getDailyRate(dates, packageInfo);
   const rentalTotal = dates.length * dailyRate;
-  const depositAmount = payload.get("depositOption") === "30000 元 (免證件)" ? phone.depositNoId : phone.depositWithId;
+  const depositAmount = payload.get("depositOption") === getDepositNoIdLabel(packageInfo)
+    ? packageInfo.depositNoId
+    : packageInfo.depositWithId;
 
   payload.set("reservationId", reservationId);
-  payload.set("modelName", phone.name);
-  payload.set("storage", phone.storage);
+  payload.set("selectedItems", selectedItemIds.join(","));
+  payload.set("itemNames", packageInfo.displayName);
+  payload.set("model", packageInfo.id);
+  payload.set("modelName", packageInfo.displayName);
+  payload.set("storage", packageInfo.specSummary);
   payload.set("dailyPrice", String(dailyRate));
   payload.set("deposit", String(depositAmount));
   payload.set("rentalDays", String(dates.length));
@@ -247,7 +416,7 @@ async function handleSubmit(event) {
   payload.set("pageUrl", window.location.href);
 
   if (payload.get("companyWebsite")) {
-    completeReservation(reservationId, dates);
+    completeReservation(reservationId, dates, selectedItemIds);
     return;
   }
 
@@ -269,7 +438,7 @@ async function handleSubmit(event) {
         mode: "no-cors",
         body: payload
       });
-      completeReservation(reservationId, dates);
+      completeReservation(reservationId, dates, selectedItemIds);
     }
   } catch (error) {
     showStatus("error", "送出時遇到問題，請稍後再試，或直接用 LINE 聯絡店家。");
@@ -279,17 +448,40 @@ async function handleSubmit(event) {
   }
 }
 
-function completeReservation(reservationId, dates) {
-  dates.forEach((date) => unavailableDates.add(date));
+function completeReservation(reservationId, dates, itemIds) {
+  itemIds.forEach((itemId) => {
+    if (!localBookedDatesByItem[itemId]) {
+      localBookedDatesByItem[itemId] = new Set();
+    }
+
+    dates.forEach((date) => localBookedDatesByItem[itemId].add(date));
+  });
+
   form.reset();
-  selectedDates.clear();
-  showDateStep();
+  selectedDates = new Set();
+  unavailableDates = new Set(config.unavailableDates || []);
+  renderDepositOptions();
+  showItemStep();
   renderCalendar();
   updateSelectionSummary();
   showStatus("success", `預約已送出，預約編號 ${reservationId}。我們會用 LINE 或電話確認。`);
 }
 
 function loadAvailability() {
+  const packageInfo = getPackageInfo();
+
+  if (!packageInfo) {
+    unavailableDates = new Set(config.unavailableDates || []);
+    availabilityStatus.textContent = "請先選擇物品。";
+    renderCalendar();
+    return;
+  }
+
+  const requestKey = packageInfo.selectedItemIds.join("|");
+  latestAvailabilityKey = requestKey;
+  unavailableDates = getLocalUnavailableDates(packageInfo.selectedItemIds);
+  renderCalendar();
+
   const endpoint = getAppsScriptUrl();
 
   if (!endpoint) {
@@ -299,6 +491,7 @@ function loadAvailability() {
 
   const requestUrl = new URL(endpoint);
   requestUrl.searchParams.set("action", "availability");
+  requestUrl.searchParams.set("selectedItems", packageInfo.selectedItemIds.join(","));
   requestUrl.searchParams.set("cachebust", String(Date.now()));
 
   fetch(requestUrl.toString(), {
@@ -313,26 +506,160 @@ function loadAvailability() {
       return response.json();
     })
     .then((payload) => {
+      if (requestKey !== latestAvailabilityKey) {
+        return;
+      }
+
       if (!payload || !payload.ok || !Array.isArray(payload.unavailableDates)) {
         throw new Error("Invalid availability response");
       }
 
-      unavailableDates = new Set([...(config.unavailableDates || []), ...payload.unavailableDates]);
+      unavailableDates = new Set([
+        ...getLocalUnavailableDates(packageInfo.selectedItemIds),
+        ...payload.unavailableDates
+      ]);
       availabilityStatus.textContent = `同步更新時間 ${formatTime(new Date())}`;
       renderCalendar();
       updateSelectionSummary();
     })
     .catch(() => {
-      availabilityStatus.textContent = "目前無法同步已滿日期，仍可先查看日曆並送出預約。";
+      if (requestKey === latestAvailabilityKey) {
+        availabilityStatus.textContent = "目前無法同步已滿日期，仍可先查看日曆並送出預約。";
+      }
     });
+}
+
+function renderDepositOptions() {
+  const packageInfo = getPackageInfo();
+
+  if (!packageInfo) {
+    depositOptions.innerHTML = `
+      <legend>押金方式</legend>
+      <p class="deposit-hint">請先選擇租借物品。</p>
+    `;
+    return;
+  }
+
+  const withIdLabel = getDepositWithIdLabel(packageInfo);
+  const noIdLabel = getDepositNoIdLabel(packageInfo);
+
+  depositOptions.innerHTML = `
+    <legend>押金方式</legend>
+    <label>
+      <input type="radio" name="depositOption" value="${withIdLabel}" required />
+      <span>${withIdLabel}</span>
+    </label>
+    <label>
+      <input type="radio" name="depositOption" value="${noIdLabel}" required />
+      <span>${noIdLabel}</span>
+    </label>
+  `;
+}
+
+function setActiveStep(step) {
+  itemStepPill.classList.toggle("is-active", step === "item");
+  dateStepPill.classList.toggle("is-active", step === "date");
+  detailsStepPill.classList.toggle("is-active", step === "details");
+
+  if (step === "item") bookingTitle.textContent = "先選租借物品";
+  if (step === "date") bookingTitle.textContent = "選擇租借日期";
+  if (step === "details") bookingTitle.textContent = "填寫預約資料";
+}
+
+function getSelectedItemIds() {
+  return [...form.querySelectorAll('input[name="itemIds"]:checked')]
+    .map((input) => input.value)
+    .filter((itemId) => itemMap.has(itemId));
+}
+
+function getPackageInfo(selectedItemIds = getSelectedItemIds()) {
+  const uniqueIds = [...new Set(selectedItemIds)].filter((itemId) => itemMap.has(itemId));
+
+  if (uniqueIds.length === 0) {
+    return null;
+  }
+
+  if (
+    uniqueIds.length === 2 &&
+    comboPackage.selectedItemIds.every((itemId) => uniqueIds.includes(itemId))
+  ) {
+    const components = comboPackage.selectedItemIds.map((itemId) => itemMap.get(itemId));
+
+    return {
+      ...comboPackage,
+      components,
+      displayName: `[組合] ${components.map((item) => `${item.name} ${item.spec}`).join(" + ")}`,
+      specSummary: components.map((item) => item.spec).join(" + ")
+    };
+  }
+
+  if (uniqueIds.length === 1) {
+    const item = itemMap.get(uniqueIds[0]);
+
+    return {
+      id: `single-${item.id}`,
+      typeLabel: "單租",
+      selectedItemIds: [item.id],
+      components: [item],
+      displayName: `[單租] ${item.name} ${item.spec}`,
+      specSummary: item.spec,
+      daily: item.daily,
+      discountedDaily: item.discountedDaily,
+      discountMinDays: item.discountMinDays,
+      depositWithId: item.depositWithId,
+      depositNoId: item.depositNoId
+    };
+  }
+
+  return null;
+}
+
+function renderPackageSummary(packageInfo) {
+  const images = packageInfo.components.map((item) => `
+    <img class="summary-photo" src="${item.image}" alt="${item.name} ${item.spec}" />
+  `).join("");
+  const componentNames = packageInfo.components.map((item) => `
+    <span class="component-name">
+      ${item.name}
+      <span class="spec-badge">${item.spec}</span>
+    </span>
+  `).join("");
+
+  return `
+    <div class="summary-photos">${images}</div>
+    <div>
+      <div class="package-title">
+        <span class="package-type">[${packageInfo.typeLabel}]</span>
+        ${componentNames}
+      </div>
+      <p>${formatRateRule(packageInfo)}</p>
+      <p>${formatDepositRule(packageInfo)}</p>
+    </div>
+  `;
+}
+
+function getLocalUnavailableDates(itemIds) {
+  const dates = new Set(config.unavailableDates || []);
+
+  itemIds.forEach((itemId) => {
+    const localDates = localBookedDatesByItem[itemId];
+
+    if (localDates) {
+      localDates.forEach((date) => dates.add(date));
+    }
+  });
+
+  return dates;
 }
 
 function getSelectedDateList() {
   return [...selectedDates].sort();
 }
 
-function getDailyRate(dates) {
-  return dates.length >= phone.discountMinDays && areConsecutiveDates(dates) ? phone.discountedDaily : phone.daily;
+function getDailyRate(dates, packageInfo) {
+  return dates.length >= packageInfo.discountMinDays && areConsecutiveDates(dates)
+    ? packageInfo.discountedDaily
+    : packageInfo.daily;
 }
 
 function areConsecutiveDates(dates) {
@@ -345,6 +672,22 @@ function areConsecutiveDates(dates) {
 
     return dayDifference === 1;
   });
+}
+
+function formatRateRule(packageInfo) {
+  return `租金：${packageInfo.daily} 元 / 日 ｜ 連續租借4日以上 ${packageInfo.discountedDaily} / 日`;
+}
+
+function formatDepositRule(packageInfo) {
+  return `押金：${packageInfo.depositWithId} 元 + 證件正本 ｜ ${packageInfo.depositNoId} 元 (免證件)`;
+}
+
+function getDepositWithIdLabel(packageInfo) {
+  return `${packageInfo.depositWithId} 元 + 證件正本`;
+}
+
+function getDepositNoIdLabel(packageInfo) {
+  return `${packageInfo.depositNoId} 元 (免證件)`;
 }
 
 function getAppsScriptUrl() {

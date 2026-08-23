@@ -1,5 +1,8 @@
 const SHEET_NAME = "預約資料";
 const SPREADSHEET_NAME = "手機租借預約資料";
+const ITEM_PHONE = "vivo-x300-ultra";
+const ITEM_LENS = "g2-ultra-400mm";
+const KNOWN_ITEM_IDS = [ITEM_PHONE, ITEM_LENS];
 
 const HEADERS = [
   "建立時間",
@@ -9,6 +12,8 @@ const HEADERS = [
   "租借天數",
   "手機型號",
   "容量",
+  "租借物品",
+  "物品 ID",
   "每日租金",
   "預估租金",
   "押金",
@@ -27,10 +32,13 @@ function doGet(e) {
   const spreadsheet = getReservationSpreadsheet_();
 
   if (params.action === "availability") {
+    const requestedItemIds = getRequestedItemIds_(params);
+
     return output_(
       {
         ok: true,
-        unavailableDates: getBookedDates_(),
+        unavailableDates: getBookedDates_(requestedItemIds),
+        requestedItems: requestedItemIds,
         generatedAt: new Date().toISOString()
       },
       params.callback
@@ -63,9 +71,10 @@ function doPost(e) {
     }
 
     const requestedDates = getRequestedDates_(data);
-    validate_(data, requestedDates);
+    const requestedItemIds = getRequestedItemIds_(data);
+    validate_(data, requestedDates, requestedItemIds);
 
-    const bookedDates = getBookedDateSet_();
+    const bookedDates = getBookedDateSet_(requestedItemIds);
     const conflicts = requestedDates.filter((date) => bookedDates[date]);
 
     if (conflicts.length) {
@@ -82,6 +91,8 @@ function doPost(e) {
       "租借天數": requestedDates.length,
       "手機型號": text_(data.modelName || data.model),
       "容量": text_(data.storage),
+      "租借物品": text_(data.itemNames || data.rentalPackage || data.modelName),
+      "物品 ID": requestedItemIds.join(", "),
       "每日租金": number_(data.dailyPrice),
       "預估租金": number_(data.rentalTotal),
       "押金": number_(data.deposit),
@@ -151,12 +162,12 @@ function getReservationSpreadsheet_() {
   return spreadsheet;
 }
 
-function getBookedDates_() {
-  const bookedDateSet = getBookedDateSet_();
+function getBookedDates_(targetItemIds) {
+  const bookedDateSet = getBookedDateSet_(targetItemIds);
   return Object.keys(bookedDateSet).sort();
 }
 
-function getBookedDateSet_() {
+function getBookedDateSet_(targetItemIds) {
   const sheet = getReservationSheet_();
 
   if (sheet.getLastRow() < 2) {
@@ -166,6 +177,8 @@ function getBookedDateSet_() {
   const values = sheet.getDataRange().getValues();
   const headers = values[0].map(text_);
   const indexes = buildHeaderIndex_(headers);
+  const requestedItemSet = toSet_(targetItemIds || []);
+  const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
   const bookedDates = {};
 
   values.slice(1).forEach((row) => {
@@ -176,12 +189,47 @@ function getBookedDateSet_() {
       return;
     }
 
+    const rowItemIds = getItemIdsFromRow_(row, indexes);
+
+    if (shouldFilterByItem && !hasItemOverlap_(rowItemIds, requestedItemSet)) {
+      return;
+    }
+
     getDatesFromRow_(row, indexes).forEach((date) => {
       bookedDates[date] = true;
     });
   });
 
   return bookedDates;
+}
+
+function getItemIdsFromRow_(row, indexes) {
+  const explicitIds = normalizeItemIds_(getCell_(row, indexes, "物品 ID"));
+
+  if (explicitIds.length) {
+    return explicitIds;
+  }
+
+  const itemText = [
+    getCell_(row, indexes, "租借物品"),
+    getCell_(row, indexes, "手機型號"),
+    getCell_(row, indexes, "容量")
+  ].join(" ").toLowerCase();
+  const inferred = {};
+
+  if (/g2|增距|400mm/.test(itemText)) {
+    inferred[ITEM_LENS] = true;
+  }
+
+  if (/vivo|x300/.test(itemText)) {
+    inferred[ITEM_PHONE] = true;
+  }
+
+  if (!Object.keys(inferred).length && getCell_(row, indexes, "手機型號")) {
+    inferred[ITEM_PHONE] = true;
+  }
+
+  return Object.keys(inferred);
 }
 
 function getDatesFromRow_(row, indexes) {
@@ -211,14 +259,44 @@ function getRequestedDates_(data) {
   return expandDateRange_(text_(data.rentalStart), text_(data.rentalEnd));
 }
 
-function validate_(data, requestedDates) {
-  const requiredFields = ["reservationId", "model", "customerName", "lineId", "phone"];
+function getRequestedItemIds_(data) {
+  const rawValue = text_(data.selectedItems || data.items || data.itemIds || data.model || data.modelName);
+  return normalizeItemIds_(rawValue);
+}
+
+function normalizeItemIds_(value) {
+  const itemSet = {};
+
+  text_(value).split(/[,，\s]+/).forEach((itemId) => {
+    if (itemId === "single-vivo-x300-ultra" || itemId === ITEM_PHONE) {
+      itemSet[ITEM_PHONE] = true;
+    }
+
+    if (itemId === "single-g2-ultra-400mm" || itemId === ITEM_LENS) {
+      itemSet[ITEM_LENS] = true;
+    }
+
+    if (itemId === "combo-vivo-g2") {
+      itemSet[ITEM_PHONE] = true;
+      itemSet[ITEM_LENS] = true;
+    }
+  });
+
+  return KNOWN_ITEM_IDS.filter((itemId) => itemSet[itemId]);
+}
+
+function validate_(data, requestedDates, requestedItemIds) {
+  const requiredFields = ["reservationId", "customerName", "lineId", "phone"];
 
   requiredFields.forEach((field) => {
     if (!text_(data[field])) {
       throw new Error(`缺少必要欄位：${field}`);
     }
   });
+
+  if (!requestedItemIds.length) {
+    throw new Error("請至少選擇一項租借物品。");
+  }
 
   if (!requestedDates.length) {
     throw new Error("請至少選擇一天租借日期。");
@@ -299,7 +377,21 @@ function buildHeaderIndex_(headers) {
 
 function getCell_(row, indexes, header) {
   const index = indexes[header];
-  return index === undefined ? "" : row[index];
+  return index === undefined ? "" : text_(row[index]);
+}
+
+function hasItemOverlap_(rowItemIds, requestedItemSet) {
+  return rowItemIds.some((itemId) => requestedItemSet[itemId]);
+}
+
+function toSet_(values) {
+  const set = {};
+
+  values.forEach((value) => {
+    set[value] = true;
+  });
+
+  return set;
 }
 
 function isCanceled_(status) {
