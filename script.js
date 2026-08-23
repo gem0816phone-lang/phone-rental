@@ -297,7 +297,7 @@ function renderDateEstimate(packageInfo, dates) {
   }
 
   const breakdown = getRentalBreakdown(packageInfo, dates);
-  const discountText = breakdown.hasDiscount ? " ｜ 已套用連租優惠" : "";
+  const discountText = breakdown.hasDiscount ? ' ｜ <span class="discount-label">已套用連租優惠</span>' : "";
 
   return `
     <div class="estimate-heading">
@@ -340,6 +340,45 @@ function formatPackageHeading(packageInfo) {
 
 function formatAmount(value) {
   return String(value);
+}
+
+function renderDetailsReview(packageInfo, dates) {
+  const packages = packageInfo.packages || [packageInfo];
+  const breakdown = getRentalBreakdown(packageInfo, dates);
+  const detailItems = getSummaryDetailItems(packages);
+  const discountText = breakdown.hasDiscount ? ' ｜ <span class="discount-label">已套用連租優惠</span>' : "";
+
+  return `
+    <div class="review-heading">
+      <strong>已選 ${dates.length} 日 ｜ 總租金 ${formatAmount(breakdown.total)} 元${discountText}</strong>
+    </div>
+    <div class="review-packages">
+      ${breakdown.lines.map((line) => `<strong>${line.title}</strong>`).join("")}
+    </div>
+    <div class="review-details">
+      ${detailItems.map((item, index) => `
+        <span>${index + 1}. ${item.name}${renderSummaryDetailSpec(item)}</span>
+      `).join("")}
+    </div>
+    <div class="review-period">
+      <span>租借期間：${formatRentalPeriod(dates)}</span>
+    </div>
+  `;
+}
+
+function formatRentalPeriod(dates) {
+  const start = formatShortDate(dates[0]);
+  const end = formatShortDate(dates[dates.length - 1]);
+
+  return start === end ? start : `${start} - ${end}`;
+}
+
+function formatShortDate(value) {
+  const date = parseDate(value);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${month}/${day}`;
 }
 
 function applyBusinessConfig() {
@@ -494,12 +533,22 @@ function renderCalendar() {
 }
 
 function toggleDate(dateString) {
-  if (selectedDates.has(dateString)) {
-    selectedDates.delete(dateString);
+  const nextDates = new Set(selectedDates);
+
+  if (nextDates.has(dateString)) {
+    nextDates.delete(dateString);
   } else {
-    selectedDates.add(dateString);
+    nextDates.add(dateString);
   }
 
+  const nextDateList = [...nextDates].sort();
+
+  if (nextDateList.length > 1 && !areConsecutiveDates(nextDateList)) {
+    showStatus("error", "租借日期需要連續，不能跳日選擇。");
+    return;
+  }
+
+  selectedDates = nextDates;
   clearStatus();
   renderCalendar();
   updateSelectionSummary();
@@ -529,17 +578,8 @@ function updateSelectionSummary() {
     return;
   }
 
-  const dailyRate = getDailyRate(dates, packageInfo);
-  const rentalTotal = days * dailyRate;
-  const dateText = dates.map(formatDateLabel).join("、");
-  const depositOption = form.elements.depositOption?.value || "尚未選擇押金方式";
-
   estimateBox.innerHTML = renderDateEstimate(packageInfo, dates);
-  selectedDatesReview.innerHTML = `
-    <strong>${packageInfo.displayName}</strong>
-    <span>租借日期：${dateText}</span>
-    <span>租金：${formatAmount(rentalTotal)} 元（${dailyRate} 元 / 日），押金方式：${depositOption}</span>
-  `;
+  selectedDatesReview.innerHTML = renderDetailsReview(packageInfo, dates);
 }
 
 function showItemStep() {

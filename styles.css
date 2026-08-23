@@ -862,14 +862,21 @@ textarea:focus {
   font-size: 15px;
 }
 
+.discount-label {
+  color: var(--weekend-red);
+}
+
 .selected-review {
+  --summary-spec-bg: #d5eafe;
+  --summary-spec-border: rgba(12, 79, 134, 0.36);
+  --summary-spec-color: #0c4f86;
   display: grid;
-  gap: 4px;
+  gap: 8px;
   padding: 14px;
-  border: 1px solid #c9e2dc;
+  border: 1px solid #b8d8f6;
   border-radius: 6px;
-  background: var(--mint);
-  color: var(--teal-dark);
+  background: #eaf4ff;
+  color: #0c4f86;
   font-size: 14px;
 }
 
@@ -877,8 +884,24 @@ textarea:focus {
   color: var(--ink);
 }
 
-.selected-review span {
-  display: block;
+.review-heading strong {
+  font-size: 18px;
+}
+
+.review-packages,
+.review-details,
+.review-period {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(12, 79, 134, 0.2);
+}
+
+.review-details span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 .deposit-options {
