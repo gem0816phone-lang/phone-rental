@@ -14,9 +14,9 @@
       content="可單租手機、增距鏡，或組合租借；日曆會依選擇物品顯示可選與已滿日期。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-39" />
-    <script src="config.js?v=calendar-20260823-39" defer></script>
-    <script src="script.js?v=calendar-20260823-39" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-40" />
+    <script src="config.js?v=calendar-20260823-40" defer></script>
+    <script src="script.js?v=calendar-20260823-40" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -24,11 +24,6 @@
         <span class="brand-mark" aria-hidden="true">租</span>
         <span>手機租借預約</span>
       </a>
-      <nav class="top-nav" aria-label="主要導覽">
-        <a href="#flow">流程</a>
-        <a href="#faq">常見問題</a>
-        <a class="nav-cta" href="#booking">立即預約</a>
-      </nav>
     </header>
 
     <main>
@@ -145,55 +140,15 @@
         </aside>
       </section>
 
-      <section class="section process" id="flow">
-        <div class="section-heading">
-          <p class="eyebrow">預約流程</p>
-          <h2>三步驟完成租借</h2>
-        </div>
-        <div class="steps">
-          <article>
-            <span>1</span>
-            <h3>選物品日期</h3>
-            <p>先選手機、增距鏡或組合，再從日曆挑可選日期。</p>
-          </article>
-          <article>
-            <span>2</span>
-            <h3>填寫資料</h3>
-            <p>留下姓名、電話、thread 帳號與押金方式，系統會送出預約。</p>
-          </article>
-          <article>
-            <span>3</span>
-            <h3>確認取還</h3>
-            <p>店家會用 thread 或電話確認取還時間、押金與證件需求。</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section faq" id="faq">
-        <div class="section-heading">
-          <p class="eyebrow">常見問題</p>
-          <h2>上線前可以先改成你的規則</h2>
-        </div>
-        <div class="faq-list">
-          <details>
-            <summary>押金怎麼收？</summary>
-            <p>依選擇物品不同，押金會自動顯示。歸還驗機後依約定退回押金。</p>
-          </details>
-          <details>
-            <summary>客人的個資會不會放在 GitHub？</summary>
-            <p>不會。GitHub Pages 只放網站，客人送出的姓名、電話與 thread 帳號會寫到你的 Google Sheet。</p>
-          </details>
-          <details>
-            <summary>Apps Script 網址可以公開嗎？</summary>
-            <p>可以，它不是密碼。不過後台仍應做基本欄位驗證，並且不要把管理員密碼或私密金鑰放進前端。</p>
-          </details>
-        </div>
-      </section>
     </main>
 
-    <footer class="site-footer">
-      <p>手機租借預約</p>
-      <a data-phone-link href="tel:0900000000">0900-000-000</a>
+    <footer class="site-footer" aria-label="聯絡資訊">
+      <span>聯絡資訊</span>
+      <span aria-hidden="true">｜</span>
+      <a class="thread-link" href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">
+        <span class="thread-icon" aria-hidden="true">@</span>
+        <span>@gem0816phone</span>
+      </a>
     </footer>
   </body>
 </html>

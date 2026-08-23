@@ -770,6 +770,7 @@ function showItemStep() {
   clearStatus();
   updateItemSelection();
   updateSelectionSummary();
+  scrollToPageTop();
 }
 
 function showDateStep() {
@@ -790,6 +791,7 @@ function showDateStep() {
   renderCalendar();
   updateSelectionSummary();
   loadAvailability();
+  scrollToPageTop();
 }
 
 function showDetailsStep() {
@@ -813,6 +815,13 @@ function showDetailsStep() {
   clearStatus();
   renderDepositOptions();
   updateSelectionSummary();
+  scrollToPageTop();
+}
+
+function scrollToPageTop() {
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
 async function handleSubmit(event) {
