@@ -264,8 +264,15 @@ h3 {
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
-.item-card:hover,
-.item-card:focus-within,
+.item-card:hover {
+  border-color: rgba(29, 38, 40, 0.24);
+}
+
+.item-card:focus-within {
+  outline: 2px solid rgba(13, 123, 117, 0.24);
+  outline-offset: 2px;
+}
+
 .item-card.is-selected {
   border-color: var(--teal);
   box-shadow: 0 12px 26px rgba(13, 123, 117, 0.13);
@@ -335,7 +342,7 @@ h3 {
 
 .item-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 2px 0 10px;
@@ -380,8 +387,9 @@ h3 {
 
 .rule-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
+  min-width: 0;
 }
 
 .rule-row > span:not(.rule-separator) {
@@ -391,6 +399,21 @@ h3 {
 .rule-separator {
   padding: 0 4px;
   color: var(--muted);
+}
+
+.item-card.is-compact-rules .rule-row {
+  display: grid;
+  gap: 4px;
+}
+
+.item-card.is-compact-rules .rule-separator {
+  display: none;
+}
+
+.item-card.is-compact-rules .deposit-rule {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
 }
 
 .spec-badge {
@@ -1078,21 +1101,6 @@ textarea:focus {
     align-content: start;
     gap: 0;
     padding-top: 8px;
-  }
-
-  .rule-row {
-    display: grid;
-    gap: 4px;
-  }
-
-  .rule-separator {
-    display: none;
-  }
-
-  .deposit-rule {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--line);
   }
 
   .title-pair {

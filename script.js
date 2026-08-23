@@ -75,6 +75,7 @@ const submitButton = document.querySelector("#submitButton");
 
 const today = startOfDay(new Date());
 const localBookedDatesByItem = {};
+let itemCardResizeObserver;
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedDates = new Set();
 let selectedPackageId = "";
@@ -138,6 +139,7 @@ function renderItemOptions() {
       </span>
     </label>
   `).join("");
+  setupItemCardRuleWrapping();
 }
 
 function getPackageOptions() {
@@ -180,7 +182,8 @@ function getComboPackageInfo() {
   return {
     ...comboPackage,
     components,
-    displayName: `[組合] ${components.map((item) => `${item.name} ${item.spec}`).join(" + ")}`,
+    displayName: `[組合] ${components.map((item) => item.name).join(" + ")}`,
+    hideSpecsInTitle: true,
     specSummary: components.map((item) => item.spec).join(" + ")
   };
 }
@@ -191,10 +194,45 @@ function renderOptionTitle(packageInfo) {
       ${index > 0 ? '<span class="plus-sign">+</span>' : ""}
       <span class="title-pair">
         <strong>${item.name}</strong>
-        <span class="spec-badge">${item.spec}</span>
+        ${packageInfo.hideSpecsInTitle ? "" : `<span class="spec-badge">${item.spec}</span>`}
       </span>
     `).join("")}
   `;
+}
+
+function setupItemCardRuleWrapping() {
+  if (itemCardResizeObserver) {
+    itemCardResizeObserver.disconnect();
+  }
+
+  const cards = [...document.querySelectorAll(".item-card")];
+  const updateAllCards = () => cards.forEach(updateCardRuleLayout);
+
+  if (!window.ResizeObserver) {
+    requestAnimationFrame(updateAllCards);
+    window.addEventListener("resize", updateAllCards);
+    return;
+  }
+
+  itemCardResizeObserver = new ResizeObserver((entries) => {
+    entries.forEach((entry) => updateCardRuleLayout(entry.target));
+  });
+
+  cards.forEach((card) => {
+    itemCardResizeObserver.observe(card);
+    requestAnimationFrame(() => updateCardRuleLayout(card));
+  });
+}
+
+function updateCardRuleLayout(card) {
+  card.classList.remove("is-compact-rules");
+
+  const rows = [...card.querySelectorAll(".rule-row")];
+  const needsCompact = rows.some((row) => row.scrollWidth > row.clientWidth + 1);
+
+  if (needsCompact) {
+    card.classList.add("is-compact-rules");
+  }
 }
 
 function applyBusinessConfig() {
@@ -216,6 +254,8 @@ function handleItemSelectionChange(event) {
   const clickedPackageId = event.target.value;
   const isChecking = event.target.checked;
   const previousPackageId = selectedPackageId;
+
+  event.target.blur();
 
   if (!isChecking && previousPackageId === clickedPackageId) {
     selectedPackageId = "";
