@@ -14,9 +14,9 @@
       content="可單租手機、增距鏡，或組合租借；日曆會依選擇物品顯示可選與已滿日期。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-35" />
-    <script src="config.js?v=calendar-20260823-35" defer></script>
-    <script src="script.js?v=calendar-20260823-35" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-36" />
+    <script src="config.js?v=calendar-20260823-36" defer></script>
+    <script src="script.js?v=calendar-20260823-36" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -105,7 +105,16 @@
                 </label>
                 <label>
                   <span>電話</span>
-                  <input type="tel" name="phone" autocomplete="tel" inputmode="tel" required />
+                  <input
+                    type="tel"
+                    name="phone"
+                    autocomplete="tel"
+                    inputmode="numeric"
+                    pattern="09[0-9]{8}"
+                    maxlength="10"
+                    title="請輸入 09 開頭的 10 碼手機號碼，例如 0912345678"
+                    required
+                  />
                 </label>
                 <label class="full-row">
                   <span>thread 帳號</span>

@@ -131,6 +131,9 @@ function bindEvents() {
   prevMonthButton.addEventListener("click", () => changeMonth(-1));
   nextMonthButton.addEventListener("click", () => changeMonth(1));
   continueButton.addEventListener("click", showDetailsStep);
+  form.elements.phone.addEventListener("input", () => {
+    form.elements.phone.setCustomValidity("");
+  });
   form.addEventListener("change", (event) => {
     if (!event.target.matches('input[name="packageId"]')) {
       updateSelectionSummary();
@@ -764,12 +767,18 @@ async function handleSubmit(event) {
     return;
   }
 
+  const phone = form.elements.phone.value.trim();
+  form.elements.phone.value = phone;
+  form.elements.phone.setCustomValidity(
+    isValidTaiwanMobile(phone) ? "" : "電話需為 09 開頭加 8 個數字，例如 0912345678。"
+  );
+
   if (!form.reportValidity()) {
     return;
   }
 
   const payload = new FormData(form);
-  const reservationId = createReservationId();
+  const reservationId = createReservationId(phone);
   const dailyRate = getDailyRate(dates, packageInfo);
   const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
   const locations = getSelectedLocations(dates);
@@ -1212,8 +1221,10 @@ function formatTime(date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-function createReservationId() {
-  const stamp = Date.now().toString(36).toUpperCase();
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `PR-${stamp}-${suffix}`;
+function isValidTaiwanMobile(phone) {
+  return /^09\d{8}$/.test(phone);
+}
+
+function createReservationId(phone) {
+  return `G${phone.slice(-5)}`;
 }
