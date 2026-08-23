@@ -98,6 +98,9 @@ const bookedDialog = document.querySelector("#bookedDialog");
 const bookedDialogTitle = document.querySelector("#bookedDialogTitle");
 const bookedDialogBody = document.querySelector("#bookedDialogBody");
 const bookedDialogClose = document.querySelector("#bookedDialogClose");
+const successDialog = document.querySelector("#successDialog");
+const successDialogBody = document.querySelector("#successDialogBody");
+const successDialogConfirm = document.querySelector("#successDialogConfirm");
 const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
@@ -145,6 +148,13 @@ function bindEvents() {
     if (event.target === bookedDialog) {
       bookedDialog.close();
     }
+  });
+  successDialogConfirm.addEventListener("click", () => {
+    successDialog.close();
+    resetReservationFlow();
+  });
+  successDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
   });
   form.elements.phone.addEventListener("input", () => {
     form.elements.phone.setCustomValidity("");
@@ -989,6 +999,26 @@ function completeReservation(reservationId, dates, itemIds) {
     dates.forEach((date) => localBookedDatesByItem[itemId].add(date));
   });
 
+  showSuccessDialog(reservationId);
+}
+
+function showSuccessDialog(reservationId) {
+  successDialogBody.innerHTML = `
+    <p><strong>預約已送出，預約編號 ${escapeHtml(reservationId)}。</strong></p>
+    <p>請至 thread 聯繫 <a class="thread-inline-link" href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a> 私訊『已填寫預約表單』</p>
+    <p>聯絡並交付訂金後才會鎖定檔期</p>
+  `;
+
+  if (typeof successDialog.showModal === "function") {
+    successDialog.showModal();
+    return;
+  }
+
+  alert(`預約已送出，預約編號 ${reservationId}。\n請至 thread 聯繫 @gem0816phone 私訊『已填寫預約表單』\n聯絡並交付訂金後才會鎖定檔期`);
+  resetReservationFlow();
+}
+
+function resetReservationFlow() {
   form.reset();
   selectedDates = new Set();
   selectedPackageId = "";
@@ -1002,7 +1032,6 @@ function completeReservation(reservationId, dates, itemIds) {
   showItemStep();
   renderCalendar();
   updateSelectionSummary();
-  showStatus("success", `預約已送出，預約編號 ${reservationId}。我們會用 thread 或電話確認。`);
 }
 
 function loadAvailability() {

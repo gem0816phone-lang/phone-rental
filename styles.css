@@ -996,7 +996,8 @@ textarea:focus {
   font-size: 22px;
 }
 
-.booked-dialog-body {
+.booked-dialog-body,
+.success-dialog-body {
   display: grid;
   gap: 8px;
   margin-bottom: 16px;
@@ -1004,7 +1005,8 @@ textarea:focus {
   font-size: 15px;
 }
 
-.booked-dialog-body p {
+.booked-dialog-body p,
+.success-dialog-body p {
   margin: 0;
 }
 
@@ -1019,6 +1021,20 @@ textarea:focus {
 
 .booked-dialog .button {
   width: 100%;
+}
+
+.success-dialog-body strong {
+  color: var(--ink);
+}
+
+.thread-inline-link {
+  color: #5b2bd6;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.thread-inline-link strong {
+  color: inherit;
 }
 
 .selected-review strong {
