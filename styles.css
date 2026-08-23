@@ -395,6 +395,12 @@ h3 {
   display: block;
 }
 
+.deposit-start {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
 .spec-badge {
   display: inline-flex;
   width: fit-content;
