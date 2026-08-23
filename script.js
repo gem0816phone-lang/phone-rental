@@ -6,7 +6,7 @@ const rentalItems = [
     image: "vivo x300 ultra.jpg",
     daily: 700,
     discountedDaily: 600,
-    discountMinDays: 4,
+    discountMinDays: 3,
     depositWithId: 3000,
     depositNoId: 30000
   },
@@ -17,7 +17,7 @@ const rentalItems = [
     image: "G2 ultra 增距鏡 400mm.jpg",
     daily: 300,
     discountedDaily: 250,
-    discountMinDays: 4,
+    discountMinDays: 3,
     depositWithId: 1000,
     depositNoId: 10000
   },
@@ -29,7 +29,7 @@ const rentalItems = [
     imageLabel: "Ray-Ban Meta",
     daily: 200,
     discountedDaily: 150,
-    discountMinDays: 4,
+    discountMinDays: 3,
     depositWithId: 1000,
     depositNoId: 10000,
     canCoexist: true
@@ -43,7 +43,7 @@ const comboPackage = {
   image: "vivo x300 ultra + G2 ultra 增距鏡 400mm.jpg",
   daily: 900,
   discountedDaily: 750,
-  discountMinDays: 4,
+  discountMinDays: 3,
   depositWithId: 4000,
   depositNoId: 40000
 };
@@ -61,7 +61,7 @@ const dropoffLocationOptions = [
   { label: "台北大巨蛋", fee: 100, feeLabel: "+ 100 元" },
   { label: "其他地點還", fee: 0, feeLabel: "私訊詳談" }
 ];
-const locationFeeWaiverMinDays = 4;
+const locationFeeWaiverMinDays = 3;
 
 const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
 const addOnItemIds = new Set(rentalItems.filter((item) => item.canCoexist).map((item) => item.id));
@@ -241,7 +241,7 @@ function renderPackageMedia(packageInfo, className) {
 function renderFeeLines(packageInfo) {
   return `
     <span class="item-meta fee-line">單日租金：${packageInfo.daily} 元 / 日</span>
-    <span class="item-meta fee-line">連續四日：${packageInfo.discountedDaily} 元 / 日</span>
+    <span class="item-meta fee-line">連租三天：${packageInfo.discountedDaily} 元 / 日</span>
     <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本</span>
     <span class="item-meta fee-line">免證押金：${packageInfo.depositNoId} 元</span>
   `;
