@@ -13,6 +13,44 @@ const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
 const STATUS_OPTIONS = ["新預約", "已確認", "已取消"];
 const TELEGRAM_BOT_TOKEN_PROPERTY = "TELEGRAM_BOT_TOKEN";
 const TELEGRAM_CHAT_ID_PROPERTY = "TELEGRAM_CHAT_ID";
+const TELEGRAM_SEPARATOR = "-------------------------------------------------";
+const TELEGRAM_ITEM_CONFIGS = {
+  [ITEM_PHONE]: {
+    title: "[單租] vivo X300 Ultra",
+    detail: "vivo X300 Ultra 12/256GB",
+    daily: 700,
+    discountedDaily: 600,
+    discountMinDays: 3
+  },
+  [ITEM_LENS]: {
+    title: "[單租] G2 Ultra 增距鏡",
+    detail: "G2 Ultra 增距鏡 400mm",
+    daily: 300,
+    discountedDaily: 250,
+    discountMinDays: 3
+  },
+  [ITEM_RAYBAN]: {
+    title: "[單租] Ray-Ban Meta 智慧眼鏡",
+    offerTitle: "[優惠] Ray-Ban Meta 智慧眼鏡",
+    detail: "Ray-Ban Meta 智慧眼鏡",
+    daily: 200,
+    discountedDaily: 150,
+    addOnDaily: 100,
+    discountMinDays: 3
+  }
+};
+const TELEGRAM_COMBO_CONFIG = {
+  title: "[組合] vivo X300 Ultra + G2 Ultra 增距鏡",
+  daily: 900,
+  discountedDaily: 750,
+  discountMinDays: 3,
+  details: [
+    "vivo X300 Ultra 12/256GB",
+    "G2 Ultra 增距鏡 400mm",
+    "專用攝影手機殼",
+    "迷你手機支架1.3M(收縮後僅14CM)"
+  ]
+};
 
 const HEADERS = [
   "建立時間",
@@ -456,39 +494,160 @@ function getTelegramConfig_() {
 }
 
 function buildTelegramReservationMessage_(rowData, requestedDates) {
-  const spreadsheetUrl = getReservationSpreadsheet_().getUrl();
+  const itemIds = normalizeItemIds_(rowData["物品 ID"]);
+  const rentalLines = getTelegramRentalLines_(itemIds, requestedDates);
+  const details = getTelegramDetailItems_(itemIds);
+  const hasDiscount = rentalLines.some((line) => line.hasDiscount);
+  const period = formatTelegramCompactPeriod_(requestedDates);
+  const discountLabel = hasDiscount ? " ｜ 已套用連租優惠" : "";
   const lines = [
-    "新預約通知",
-    `預約編號：${rowData["預約編號"]}`,
+    `收到新預約 ${formatTelegramCreatedAt_(rowData["建立時間"])}`,
+    TELEGRAM_SEPARATOR,
     `姓名：${rowData["姓名"]}`,
     `電話：${rowData["電話"]}`,
-    `thread：${rowData["thread 帳號"]}`,
-    "",
-    `租借物品：${rowData["租借物品"]}`,
-    `租借期間：${formatTelegramRentalPeriod_(requestedDates)}`,
-    `租借天數：${rowData["租借天數"]} 日`,
-    `預估租金：${formatTelegramAmount_(rowData["預估租金"])} 元`,
-    `押金方式：${rowData["押金方式"]}`,
-    `押金：${formatTelegramAmount_(rowData["押金"])} 元`,
-    "",
-    `取機：${rowData["取機地點"]} ｜ ${rowData["取機加價"]}`,
-    `還機：${rowData["還機地點"]} ｜ ${rowData["還機加價"]}`,
-    `地點加價：${formatTelegramAmount_(rowData["地點加價"])} 元`,
-    "",
-    `試算表：${spreadsheetUrl}`
+    `thread帳號：${rowData["thread 帳號"]}`,
+    TELEGRAM_SEPARATOR,
+    `總租金 ${formatTelegramAmount_(rowData["預估租金"])} 元`,
+    `已選 ${requestedDates.length} 日 ｜ ${period}${discountLabel}`,
+    TELEGRAM_SEPARATOR,
+    `取機時間：${formatTelegramPickupDateTime_(requestedDates)}`,
+    `取機地點：${rowData["取機地點"]} ｜ ${rowData["取機加價"]}`,
+    `還機時間：${formatTelegramReturnDateTime_(requestedDates)}`,
+    `還機地點：${rowData["還機地點"]} ｜ ${rowData["還機加價"]}`,
+    TELEGRAM_SEPARATOR,
+    formatTelegramRentalLines_(rentalLines),
+    TELEGRAM_SEPARATOR,
+    formatTelegramDetailLines_(details)
   ];
 
   return lines.join("\n");
 }
 
-function formatTelegramRentalPeriod_(dates) {
+function getTelegramRentalLines_(itemIds, dates) {
+  const itemSet = toSet_(itemIds || []);
+  const lines = [];
+  const hasCombo = itemSet[ITEM_PHONE] && itemSet[ITEM_LENS];
+  const hasBaseItem = itemSet[ITEM_PHONE] || itemSet[ITEM_LENS];
+
+  if (hasCombo) {
+    lines.push(buildTelegramRentalLine_(TELEGRAM_COMBO_CONFIG, dates));
+  } else {
+    [ITEM_PHONE, ITEM_LENS].forEach((itemId) => {
+      if (itemSet[itemId]) {
+        lines.push(buildTelegramRentalLine_(TELEGRAM_ITEM_CONFIGS[itemId], dates));
+      }
+    });
+  }
+
+  if (itemSet[ITEM_RAYBAN]) {
+    const raybanConfig = TELEGRAM_ITEM_CONFIGS[ITEM_RAYBAN];
+    lines.push(buildTelegramRentalLine_(
+      {
+        title: hasBaseItem ? raybanConfig.offerTitle : raybanConfig.title,
+        daily: hasBaseItem ? raybanConfig.addOnDaily : raybanConfig.daily,
+        discountedDaily: hasBaseItem ? raybanConfig.addOnDaily : raybanConfig.discountedDaily,
+        discountMinDays: raybanConfig.discountMinDays,
+        isAddOnOffer: hasBaseItem
+      },
+      dates
+    ));
+  }
+
+  return lines;
+}
+
+function buildTelegramRentalLine_(config, dates) {
+  const hasDiscount = hasTelegramRentalDiscount_(dates, config);
+  const dailyRate = hasDiscount ? config.discountedDaily : config.daily;
+
+  return {
+    title: config.title,
+    dailyRate,
+    total: dailyRate * dates.length,
+    hasDiscount
+  };
+}
+
+function hasTelegramRentalDiscount_(dates, config) {
+  if (config.isAddOnOffer) {
+    return false;
+  }
+
+  return dates.length >= config.discountMinDays && areConsecutiveDates_(dates);
+}
+
+function formatTelegramRentalLines_(rentalLines) {
+  return rentalLines.map((line) => [
+    line.title,
+    `${formatTelegramAmount_(line.dailyRate)} 元 / 日 ｜ 共 ${formatTelegramAmount_(line.total)} 元`
+  ].join("\n")).join("\n");
+}
+
+function getTelegramDetailItems_(itemIds) {
+  const itemSet = toSet_(itemIds || []);
+  const details = [];
+
+  if (itemSet[ITEM_PHONE] && itemSet[ITEM_LENS]) {
+    TELEGRAM_COMBO_CONFIG.details.forEach((detail) => details.push(detail));
+  } else {
+    [ITEM_PHONE, ITEM_LENS].forEach((itemId) => {
+      if (itemSet[itemId]) {
+        details.push(TELEGRAM_ITEM_CONFIGS[itemId].detail);
+      }
+    });
+  }
+
+  if (itemSet[ITEM_RAYBAN]) {
+    details.push(TELEGRAM_ITEM_CONFIGS[ITEM_RAYBAN].detail);
+  }
+
+  return details;
+}
+
+function formatTelegramDetailLines_(details) {
+  return details.map((detail, index) => `${index + 1}. ${detail}`).join("\n");
+}
+
+function formatTelegramCreatedAt_(value) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm");
+  }
+
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm");
+}
+
+function formatTelegramCompactPeriod_(dates) {
   if (!dates || !dates.length) {
     return "";
   }
 
-  const startDate = dates[0];
-  const returnDate = addDaysToDateString_(dates[dates.length - 1], 1);
-  return `${formatMonthDay_(startDate)} 中午12點後 - ${formatMonthDay_(returnDate)} 中午12點前`;
+  return `${formatMonthDay_(dates[0])}-${formatMonthDay_(dates[dates.length - 1])}`;
+}
+
+function formatTelegramPickupDateTime_(dates) {
+  return dates && dates.length ? `${formatMonthDay_(dates[0])} 中午12點後` : "";
+}
+
+function formatTelegramReturnDateTime_(dates) {
+  if (!dates || !dates.length) {
+    return "";
+  }
+
+  return `${formatMonthDay_(addDaysToDateString_(dates[dates.length - 1], 1))} 中午12點前`;
+}
+
+function areConsecutiveDates_(dates) {
+  return dates.every((date, index) => {
+    if (index === 0) {
+      return true;
+    }
+
+    const previousDate = new Date(`${dates[index - 1]}T00:00:00`);
+    const currentDate = new Date(`${date}T00:00:00`);
+    return (currentDate - previousDate) / 86400000 === 1;
+  });
 }
 
 function addDaysToDateString_(value, days) {
