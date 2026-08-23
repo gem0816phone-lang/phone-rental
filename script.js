@@ -167,7 +167,7 @@ function getSinglePackageInfo(itemId) {
     components: [item],
     image: item.image,
     imageLabel: item.imageLabel,
-    displayName: `[單租] ${item.name} ${item.spec}`,
+    displayName: `[單租] ${formatItemNameWithSpec(item)}`,
     specSummary: item.spec,
     daily: item.daily,
     discountedDaily: item.discountedDaily,
@@ -187,22 +187,29 @@ function getComboPackageInfo() {
   return {
     ...comboPackage,
     components,
-    displayName: `[組合] ${components.map((item) => item.name).join(" + ")}`,
-    hideSpecsInTitle: true,
+    displayName: `[組合] ${components.map(formatItemNameWithSpec).join(" + ")}`,
     specSummary: components.map((item) => item.spec).join(" + ")
   };
 }
 
 function renderOptionTitle(packageInfo) {
+  return renderTitleComponents(packageInfo);
+}
+
+function renderTitleComponents(packageInfo) {
   return `
     ${packageInfo.components.map((item, index) => `
       ${index > 0 ? '<span class="plus-sign">+</span>' : ""}
       <span class="title-pair">
         <strong>${item.name}</strong>
-        ${packageInfo.hideSpecsInTitle ? "" : `<span class="spec-badge">${item.spec}</span>`}
+        ${item.spec ? `<span class="spec-badge">${item.spec}</span>` : ""}
       </span>
     `).join("")}
   `;
+}
+
+function formatItemNameWithSpec(item) {
+  return `${item.name}${item.spec ? ` ${item.spec}` : ""}`;
 }
 
 function renderPackageMedia(packageInfo, className) {
@@ -249,17 +256,10 @@ function renderSummaryDetailSpec(item) {
 }
 
 function renderSummaryHeading(packageInfo) {
-  if (packageInfo.id === comboPackage.id) {
-    return `<strong class="summary-heading">${packageInfo.displayName}</strong>`;
-  }
-
-  const item = packageInfo.components[0];
-
   return `
     <strong class="summary-heading">
       <span>[${packageInfo.typeLabel}]</span>
-      <span>${item.name}</span>
-      <span class="spec-badge">${item.spec}</span>
+      ${renderTitleComponents(packageInfo)}
     </strong>
   `;
 }
