@@ -69,7 +69,6 @@ const weekdayFormatter = new Intl.DateTimeFormat("zh-TW", { weekday: "short" });
 const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long" });
 const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
-const manualUnavailableItemsByDate = normalizeConfiguredUnavailableItemsByDate(config.unavailableItemsByDate);
 
 const form = document.querySelector("#reservationForm");
 const bookingTitle = document.querySelector("#booking-title");
@@ -1232,13 +1231,6 @@ function renderPackageSummary(packageInfo) {
 
 function getLocalUnavailableDates(itemIds) {
   const dates = new Set(config.unavailableDates || []);
-  const targetItemIds = new Set(itemIds || []);
-
-  Object.entries(manualUnavailableItemsByDate).forEach(([date, blockedItemIds]) => {
-    if (!targetItemIds.size || blockedItemIds.some((itemId) => targetItemIds.has(itemId))) {
-      dates.add(date);
-    }
-  });
 
   (itemIds || []).forEach((itemId) => {
     const localDates = localBookedDatesByItem[itemId];
@@ -1255,24 +1247,6 @@ function getLocalUnavailableItemsByDate(itemIds) {
   const targetItemIds = new Set(itemIds || []);
   const itemsByDate = {};
 
-  Object.entries(manualUnavailableItemsByDate).forEach(([date, blockedItemIds]) => {
-    blockedItemIds.forEach((itemId) => {
-      if (!targetItemIds.has(itemId)) {
-        return;
-      }
-
-      if (!itemsByDate[date]) {
-        itemsByDate[date] = [];
-      }
-
-      const label = getItemLabel(itemId);
-
-      if (!itemsByDate[date].includes(label)) {
-        itemsByDate[date].push(label);
-      }
-    });
-  });
-
   Object.entries(localBookedDatesByItem).forEach(([itemId, dates]) => {
     if (!targetItemIds.has(itemId)) {
       return;
@@ -1288,56 +1262,6 @@ function getLocalUnavailableItemsByDate(itemIds) {
   });
 
   return itemsByDate;
-}
-
-function normalizeConfiguredUnavailableItemsByDate(itemsByDate) {
-  const normalized = {};
-
-  Object.entries(itemsByDate || {}).forEach(([date, itemIds]) => {
-    const dateString = String(date || "").slice(0, 10);
-    const normalizedItemIds = normalizeItemIdList(itemIds);
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString) || !normalizedItemIds.length) {
-      return;
-    }
-
-    normalized[dateString] = normalizedItemIds;
-  });
-
-  return normalized;
-}
-
-function normalizeItemIdList(value) {
-  const rawItemIds = Array.isArray(value)
-    ? value
-    : String(value || "").split(/[,，\s]+/);
-  const normalized = new Set();
-
-  rawItemIds.forEach((itemId) => {
-    const id = String(itemId || "").trim();
-
-    if (itemMap.has(id)) {
-      normalized.add(id);
-    }
-
-    if (id === "single-vivo-x300-ultra") {
-      normalized.add("vivo-x300-ultra");
-    }
-
-    if (id === "single-g2-ultra-400mm") {
-      normalized.add("g2-ultra-400mm");
-    }
-
-    if (id === "single-ray-ban-meta") {
-      normalized.add("ray-ban-meta");
-    }
-
-    if (id === comboPackage.id) {
-      comboPackage.selectedItemIds.forEach((comboItemId) => normalized.add(comboItemId));
-    }
-  });
-
-  return [...normalized];
 }
 
 function mergeUnavailableItemMaps(...maps) {
