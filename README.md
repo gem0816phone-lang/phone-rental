@@ -1,6 +1,6 @@
 # 手機租借網站
 
-這是一個可放在 GitHub Pages 的手機租借預約網站。客人先在日曆選擇可租日期，再填寫姓名、LINE 與電話，前端會呼叫 Google Apps Script，將資料寫入 Google Sheet。
+這是一個可放在 GitHub Pages 的手機租借預約網站。客人先在日曆選擇可租日期，再填寫姓名、thread 帳號與電話，前端會呼叫 Google Apps Script，將資料寫入 Google Sheet。
 
 ## 檔案
 
@@ -24,6 +24,20 @@
 第一次打開 Web App URL 或收到預約時，Apps Script 會自動在你的 Google Drive 建立一份名為「手機租借預約資料」的 Google Sheet。
 
 日曆會透過 Apps Script 讀取 Google Sheet 內的正式預約，把已預約日期顯示為「已滿」。預約編號以 `TEST-` 開頭的測試資料會被日曆忽略，不會占用日期。
+
+## 設定 Telegram 通知
+
+Apps Script 收到新預約後，可以同步傳 Telegram 通知。Telegram bot token 和 chat id 請放在 Apps Script 的「指令碼屬性」，不要放到 GitHub。
+
+1. 在 Telegram 找 `@BotFather`，輸入 `/newbot` 建立機器人，取得 bot token。
+2. 打開你剛建立的機器人，先傳一則訊息給它。
+3. 到 Apps Script 專案的「專案設定」→「指令碼屬性」，新增：
+   - `TELEGRAM_BOT_TOKEN`：貼上 bot token
+   - `TELEGRAM_CHAT_ID`：貼上你的 Telegram chat id
+4. 如果還不知道 chat id，先只設定 `TELEGRAM_BOT_TOKEN`，在 Apps Script 執行 `logTelegramUpdates`，到「執行紀錄」看 `chat.id`。
+5. 設好後執行 `testTelegramNotification`，收到測試訊息就代表通知成功。
+
+第一次執行 Telegram 測試時，Google 會要求授權外部連線權限，這是正常的。
 
 ## 發佈到 GitHub Pages
 

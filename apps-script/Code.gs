@@ -11,6 +11,8 @@ const ITEM_LABELS = {
 };
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
 const STATUS_OPTIONS = ["新預約", "已確認", "已取消"];
+const TELEGRAM_BOT_TOKEN_PROPERTY = "TELEGRAM_BOT_TOKEN";
+const TELEGRAM_CHAT_ID_PROPERTY = "TELEGRAM_CHAT_ID";
 
 const HEADERS = [
   "建立時間",
@@ -136,6 +138,7 @@ function doPost(e) {
 
     sheet.appendRow(headers.map((header) => valueOrBlank_(rowData, header)));
     formatReservationSheet_(sheet, headers);
+    notifyTelegramReservation_(rowData, requestedDates);
 
     return json_({ ok: true, reservationId: data.reservationId });
   } catch (error) {
@@ -422,6 +425,130 @@ function getReservationSpreadsheet_() {
   const spreadsheet = SpreadsheetApp.create(SPREADSHEET_NAME);
   properties.setProperty("SPREADSHEET_ID", spreadsheet.getId());
   return spreadsheet;
+}
+
+function notifyTelegramReservation_(rowData, requestedDates) {
+  const telegramConfig = getTelegramConfig_();
+
+  if (!telegramConfig.botToken || !telegramConfig.chatIds.length) {
+    return;
+  }
+
+  const message = buildTelegramReservationMessage_(rowData, requestedDates);
+
+  telegramConfig.chatIds.forEach((chatId) => {
+    try {
+      sendTelegramMessage_(telegramConfig.botToken, chatId, message);
+    } catch (error) {
+      console.error(`Telegram notification failed for chat ${chatId}: ${error.message}`);
+    }
+  });
+}
+
+function getTelegramConfig_() {
+  const properties = PropertiesService.getScriptProperties();
+  const botToken = plainText_(properties.getProperty(TELEGRAM_BOT_TOKEN_PROPERTY));
+  const chatIds = plainText_(properties.getProperty(TELEGRAM_CHAT_ID_PROPERTY))
+    .split(/[,，\s]+/)
+    .filter(Boolean);
+
+  return { botToken, chatIds };
+}
+
+function buildTelegramReservationMessage_(rowData, requestedDates) {
+  const spreadsheetUrl = getReservationSpreadsheet_().getUrl();
+  const lines = [
+    "新預約通知",
+    `預約編號：${rowData["預約編號"]}`,
+    `姓名：${rowData["姓名"]}`,
+    `電話：${rowData["電話"]}`,
+    `thread：${rowData["thread 帳號"]}`,
+    "",
+    `租借物品：${rowData["租借物品"]}`,
+    `租借期間：${formatTelegramRentalPeriod_(requestedDates)}`,
+    `租借天數：${rowData["租借天數"]} 日`,
+    `預估租金：${formatTelegramAmount_(rowData["預估租金"])} 元`,
+    `押金方式：${rowData["押金方式"]}`,
+    `押金：${formatTelegramAmount_(rowData["押金"])} 元`,
+    "",
+    `取機：${rowData["取機地點"]} ｜ ${rowData["取機加價"]}`,
+    `還機：${rowData["還機地點"]} ｜ ${rowData["還機加價"]}`,
+    `地點加價：${formatTelegramAmount_(rowData["地點加價"])} 元`,
+    "",
+    `試算表：${spreadsheetUrl}`
+  ];
+
+  return lines.join("\n");
+}
+
+function formatTelegramRentalPeriod_(dates) {
+  if (!dates || !dates.length) {
+    return "";
+  }
+
+  const startDate = dates[0];
+  const returnDate = addDaysToDateString_(dates[dates.length - 1], 1);
+  return `${formatMonthDay_(startDate)} 中午12點後 - ${formatMonthDay_(returnDate)} 中午12點前`;
+}
+
+function addDaysToDateString_(value, days) {
+  const normalized = normalizeDateValue_(value);
+  const date = new Date(`${normalized}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return formatDate_(date);
+}
+
+function formatMonthDay_(value) {
+  return normalizeDateValue_(value).slice(5).replace("-", "/");
+}
+
+function formatTelegramAmount_(value) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? String(Math.round(numberValue)) : plainText_(value);
+}
+
+function sendTelegramMessage_(botToken, chatId, message) {
+  const response = UrlFetchApp.fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({
+      chat_id: chatId,
+      text: message,
+      disable_web_page_preview: true
+    }),
+    muteHttpExceptions: true
+  });
+  const responseCode = response.getResponseCode();
+
+  if (responseCode < 200 || responseCode >= 300) {
+    throw new Error(`Telegram API returned ${responseCode}: ${response.getContentText()}`);
+  }
+}
+
+function testTelegramNotification() {
+  const telegramConfig = getTelegramConfig_();
+
+  if (!telegramConfig.botToken || !telegramConfig.chatIds.length) {
+    throw new Error(`請先在指令碼屬性設定 ${TELEGRAM_BOT_TOKEN_PROPERTY} 與 ${TELEGRAM_CHAT_ID_PROPERTY}。`);
+  }
+
+  telegramConfig.chatIds.forEach((chatId) => {
+    sendTelegramMessage_(telegramConfig.botToken, chatId, "手機租借預約 Telegram 通知測試成功。");
+  });
+}
+
+function logTelegramUpdates() {
+  const telegramConfig = getTelegramConfig_();
+
+  if (!telegramConfig.botToken) {
+    throw new Error(`請先在指令碼屬性設定 ${TELEGRAM_BOT_TOKEN_PROPERTY}。`);
+  }
+
+  const response = UrlFetchApp.fetch(`https://api.telegram.org/bot${telegramConfig.botToken}/getUpdates`, {
+    muteHttpExceptions: true
+  });
+
+  Logger.log(response.getContentText());
 }
 
 function getBookedDates_(targetItemIds) {
@@ -774,6 +901,10 @@ function text_(value) {
   }
 
   return stringValue;
+}
+
+function plainText_(value) {
+  return value === null || value === undefined ? "" : String(value).trim();
 }
 
 function number_(value) {
