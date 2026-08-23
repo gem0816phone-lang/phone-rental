@@ -9,6 +9,8 @@
   --teal-dark: #07524f;
   --coral: #e66b4d;
   --lemon: #f5c84b;
+  --selected-text: #9a6a00;
+  --weekend-red: #d93025;
   --mint: #d8eee8;
   --shadow: 0 18px 45px rgba(27, 38, 40, 0.12);
 }
@@ -340,6 +342,14 @@ textarea:focus {
   opacity: 0.42;
 }
 
+.calendar-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
 .calendar-legend {
   display: flex;
   flex-wrap: wrap;
@@ -353,6 +363,18 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+.calendar-legend .legend-available {
+  color: var(--teal);
+}
+
+.calendar-legend .legend-full {
+  color: var(--coral);
+}
+
+.calendar-legend .legend-selected {
+  color: var(--selected-text);
 }
 
 .status-dot {
@@ -376,9 +398,12 @@ textarea:focus {
 }
 
 .availability-status {
+  margin-left: auto;
   min-height: 22px;
   color: var(--muted);
   font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .calendar-weekdays,
@@ -393,6 +418,11 @@ textarea:focus {
   font-size: 13px;
   font-weight: 900;
   text-align: center;
+}
+
+.calendar-weekdays span:first-child,
+.calendar-weekdays span:last-child {
+  color: var(--weekend-red);
 }
 
 .calendar-grid {
@@ -451,6 +481,10 @@ textarea:focus {
   line-height: 1;
 }
 
+.calendar-day.is-weekend .date-number {
+  color: var(--weekend-red);
+}
+
 .date-status {
   max-width: 100%;
   overflow: hidden;
@@ -459,6 +493,22 @@ textarea:focus {
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.date-status.status-available {
+  color: var(--teal);
+}
+
+.date-status.status-full {
+  color: var(--coral);
+}
+
+.date-status.status-selected {
+  color: var(--selected-text);
+}
+
+.date-status.status-past {
+  color: var(--ink);
 }
 
 .honeypot {

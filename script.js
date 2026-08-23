@@ -101,12 +101,15 @@ function renderCalendar() {
   for (let day = 1; day <= lastDay.getDate(); day += 1) {
     const date = new Date(year, month, day);
     const dateString = toDateInputValue(date);
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isPast = date < today;
     const isFull = unavailableDates.has(dateString);
     const isSelected = selectedDates.has(dateString);
-    const status = isPast ? "不可租" : isFull ? "已滿" : "可租";
+    const status = isPast ? "已過" : isFull ? "已滿" : "可租";
+    const statusClass = isPast ? "status-past" : isSelected ? "status-selected" : isFull ? "status-full" : "status-available";
     const classes = ["calendar-day"];
 
+    if (isWeekend) classes.push("is-weekend");
     if (isPast) classes.push("is-past");
     if (isFull) classes.push("is-full");
     if (isSelected) classes.push("is-selected");
@@ -121,7 +124,7 @@ function renderCalendar() {
         aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}"
       >
         <span class="date-number">${day}</span>
-        <span class="date-status">${isSelected ? "已選" : status}</span>
+        <span class="date-status ${statusClass}">${isSelected ? "已選" : status}</span>
       </button>
     `);
   }
@@ -310,7 +313,7 @@ function loadAvailability() {
       }
 
       unavailableDates = new Set([...(config.unavailableDates || []), ...payload.unavailableDates]);
-      availabilityStatus.textContent = `已同步可租狀態，更新時間 ${formatTime(new Date())}`;
+      availabilityStatus.textContent = `同步更新時間 ${formatTime(new Date())}`;
       renderCalendar();
       updateSelectionSummary();
     })

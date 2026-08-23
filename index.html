@@ -14,9 +14,9 @@
       content="日曆顯示可租與已滿日期，預約資料直接寫入 Google Sheet 後台。"
     />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260823-4" />
-    <script src="config.js?v=calendar-20260823-4" defer></script>
-    <script src="script.js?v=calendar-20260823-4" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260823-5" />
+    <script src="config.js?v=calendar-20260823-5" defer></script>
+    <script src="script.js?v=calendar-20260823-5" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -66,13 +66,15 @@
                 <button class="icon-button" type="button" id="nextMonthButton" aria-label="下一個月">›</button>
               </div>
 
-              <div class="calendar-legend" aria-label="日期狀態說明">
-                <span><i class="status-dot available"></i>可租</span>
-                <span><i class="status-dot full"></i>已滿</span>
-                <span><i class="status-dot selected"></i>已選</span>
+              <div class="calendar-status-row">
+                <div class="calendar-legend" aria-label="日期狀態說明">
+                  <span class="legend-available"><i class="status-dot available"></i>可租</span>
+                  <span class="legend-full"><i class="status-dot full"></i>已滿</span>
+                  <span class="legend-selected"><i class="status-dot selected"></i>已選</span>
+                </div>
+                <div class="availability-status" id="availabilityStatus">正在同步可租日期...</div>
               </div>
 
-              <div class="availability-status" id="availabilityStatus">正在同步可租日期...</div>
               <div class="calendar-weekdays" aria-hidden="true">
                 <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
               </div>
