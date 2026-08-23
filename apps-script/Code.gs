@@ -7,7 +7,7 @@ const KNOWN_ITEM_IDS = [ITEM_PHONE, ITEM_LENS, ITEM_RAYBAN];
 const ITEM_LABELS = {
   [ITEM_PHONE]: "vivo X300 Ultra 12/256GB",
   [ITEM_LENS]: "G2 Ultra 增距鏡 400mm",
-  [ITEM_RAYBAN]: "Meta 智慧眼鏡 方框M"
+  [ITEM_RAYBAN]: "Ray-Ban Meta 智慧眼鏡 方框M"
 };
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
 const STATUS_OPTIONS = ["新預約", "已確認", "已取消"];

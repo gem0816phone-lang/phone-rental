@@ -849,6 +849,11 @@ textarea:focus {
   color: #9ba19a;
 }
 
+.calendar-day.is-syncing {
+  background: #f4f2ec;
+  color: #8a918b;
+}
+
 .calendar-day:disabled {
   cursor: not-allowed;
 }
@@ -883,6 +888,10 @@ textarea:focus {
 
 .date-status.status-past {
   color: var(--ink);
+}
+
+.date-status.status-syncing {
+  color: var(--muted);
 }
 
 .honeypot {

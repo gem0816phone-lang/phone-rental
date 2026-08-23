@@ -23,10 +23,10 @@ const rentalItems = [
   },
   {
     id: "ray-ban-meta",
-    name: "Meta 智慧眼鏡",
+    name: "Ray-Ban Meta 智慧眼鏡",
     spec: "方框M",
-    image: "Meta 智慧眼鏡.jpg",
-    imageLabel: "Meta 智慧眼鏡",
+    image: "Ray-Ban Meta 智慧眼鏡.jpg",
+    imageLabel: "Ray-Ban Meta 智慧眼鏡",
     daily: 200,
     discountedDaily: 150,
     discountMinDays: 3,
@@ -111,6 +111,8 @@ let selectedAddOnPackageIds = new Set();
 let unavailableDates = new Set(config.unavailableDates || []);
 let unavailableItemsByDate = {};
 let latestAvailabilityKey = "";
+let availabilityReadyKey = "";
+let availabilitySyncingKey = "";
 
 init();
 
@@ -631,7 +633,10 @@ function renderCalendar() {
   const lastDay = new Date(year, month + 1, 0);
   const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const packageInfo = getPackageInfo();
-  const canSelectDates = Boolean(packageInfo);
+  const hasPackage = Boolean(packageInfo);
+  const isAvailabilityReady = isAvailabilityReadyForPackage(packageInfo);
+  const isAvailabilitySyncing = isAvailabilitySyncingForPackage(packageInfo);
+  const canSelectDates = hasPackage && isAvailabilityReady && !isAvailabilitySyncing;
 
   monthLabel.textContent = monthFormatter.format(visibleMonth);
   prevMonthButton.disabled = visibleMonth <= minMonth;
@@ -649,18 +654,29 @@ function renderCalendar() {
     const isPast = date < today;
     const isFull = canSelectDates && unavailableDates.has(dateString);
     const isSelected = selectedDates.has(dateString);
-    const status = !canSelectDates ? "先選" : isPast ? "已過" : isFull ? "已滿" : "可選";
-    const statusClass = !canSelectDates
+    const status = !hasPackage
+      ? "先選"
+      : !isAvailabilityReady || isAvailabilitySyncing
+        ? "同步中"
+        : isPast
+          ? "已過"
+          : isFull
+            ? "已滿"
+            : "可選";
+    const statusClass = !hasPackage
       ? "status-past"
-      : isPast
-        ? "status-past"
-        : isFull
-          ? "status-full"
-          : "status-available";
+      : !isAvailabilityReady || isAvailabilitySyncing
+        ? "status-syncing"
+        : isPast
+          ? "status-past"
+          : isFull
+            ? "status-full"
+            : "status-available";
     const classes = ["calendar-day"];
 
     if (isWeekend) classes.push("is-weekend");
-    if (isPast || !canSelectDates) classes.push("is-past");
+    if (isPast || !hasPackage) classes.push("is-past");
+    if (hasPackage && (!isAvailabilityReady || isAvailabilitySyncing)) classes.push("is-syncing");
     if (isFull) classes.push("is-full");
     if (isSelected) classes.push("is-selected");
 
@@ -687,6 +703,13 @@ function renderCalendar() {
 }
 
 function handleCalendarDayClick(button) {
+  const packageInfo = getPackageInfo();
+
+  if (!isAvailabilityReadyForPackage(packageInfo)) {
+    showStatus("warning", "正在同步可租狀態，請稍候再選日期。");
+    return;
+  }
+
   if (button.dataset.full === "true") {
     showBookedDateDialog(button.dataset.date);
     return;
@@ -756,7 +779,7 @@ function updateSelectionSummary() {
   form.elements.selectedDates.value = dates.join(",");
   form.elements.rentalStart.value = dates[0] || "";
   form.elements.rentalEnd.value = dates[dates.length - 1] || "";
-  continueButton.disabled = !packageInfo || days === 0;
+  continueButton.disabled = !packageInfo || days === 0 || !isAvailabilityReadyForPackage(packageInfo);
   updateStepNavigation();
 
   if (!packageInfo) {
@@ -824,6 +847,12 @@ function showDetailsStep() {
     return;
   }
 
+  if (!isAvailabilityReadyForPackage(packageInfo)) {
+    showDateStep();
+    showStatus("warning", "請等待可租狀態同步完成後再填寫資料。");
+    return;
+  }
+
   itemStep.hidden = true;
   dateStep.hidden = true;
   detailsStep.hidden = false;
@@ -857,6 +886,12 @@ async function handleSubmit(event) {
   if (!dates.length) {
     showDateStep();
     showStatus("error", "請先在日曆上選擇要租的日期。");
+    return;
+  }
+
+  if (!isAvailabilityReadyForPackage(packageInfo)) {
+    showDateStep();
+    showStatus("warning", "請等待可租狀態同步完成後再送出預約。");
     return;
   }
 
@@ -960,6 +995,9 @@ function completeReservation(reservationId, dates, itemIds) {
   selectedAddOnPackageIds = new Set();
   unavailableDates = new Set(config.unavailableDates || []);
   unavailableItemsByDate = {};
+  latestAvailabilityKey = "";
+  availabilityReadyKey = "";
+  availabilitySyncingKey = "";
   renderDepositOptions();
   showItemStep();
   renderCalendar();
@@ -971,6 +1009,8 @@ function loadAvailability() {
   const packageInfo = getPackageInfo();
 
   if (!packageInfo) {
+    availabilityReadyKey = "";
+    availabilitySyncingKey = "";
     unavailableDates = new Set(config.unavailableDates || []);
     unavailableItemsByDate = {};
     availabilityStatus.textContent = "請先選擇物品。";
@@ -980,14 +1020,22 @@ function loadAvailability() {
 
   const requestKey = packageInfo.selectedItemIds.join("|");
   latestAvailabilityKey = requestKey;
+  availabilityReadyKey = "";
+  availabilitySyncingKey = requestKey;
   unavailableDates = getLocalUnavailableDates(packageInfo.selectedItemIds);
   unavailableItemsByDate = getLocalUnavailableItemsByDate(packageInfo.selectedItemIds);
+  availabilityStatus.textContent = "正在同步可選日期...";
   renderCalendar();
+  updateSelectionSummary();
 
   const endpoint = getAppsScriptUrl();
 
   if (!endpoint) {
+    availabilityReadyKey = requestKey;
+    availabilitySyncingKey = "";
     availabilityStatus.textContent = "目前是測試模式，日曆只會使用前端設定的已滿日期。";
+    renderCalendar();
+    updateSelectionSummary();
     return;
   }
 
@@ -1024,13 +1072,20 @@ function loadAvailability() {
         getLocalUnavailableItemsByDate(packageInfo.selectedItemIds),
         payload.unavailableItemsByDate || {}
       );
+      availabilitySyncingKey = "";
+      availabilityReadyKey = requestKey;
       availabilityStatus.textContent = `同步更新時間 ${formatTime(new Date())}`;
       renderCalendar();
       updateSelectionSummary();
     })
     .catch(() => {
       if (requestKey === latestAvailabilityKey) {
-        availabilityStatus.textContent = "目前無法同步已滿日期，仍可先查看日曆並送出預約。";
+        availabilitySyncingKey = "";
+        availabilityReadyKey = "";
+        selectedDates = new Set();
+        availabilityStatus.textContent = "目前無法同步可租狀態，請稍後再試。";
+        renderCalendar();
+        updateSelectionSummary();
       }
     });
 }
@@ -1113,12 +1168,28 @@ function setStepCurrent(stepButton, isCurrent) {
 }
 
 function updateStepNavigation() {
-  const hasPackage = Boolean(getPackageInfo());
+  const packageInfo = getPackageInfo();
+  const hasPackage = Boolean(packageInfo);
   const hasDates = selectedDates.size > 0;
+  const availabilityReady = isAvailabilityReadyForPackage(packageInfo);
 
   itemStepPill.disabled = false;
   dateStepPill.disabled = !hasPackage;
-  detailsStepPill.disabled = !hasPackage || !hasDates;
+  detailsStepPill.disabled = !hasPackage || !hasDates || !availabilityReady;
+}
+
+function getAvailabilityKey(packageInfo) {
+  return packageInfo?.selectedItemIds.join("|") || "";
+}
+
+function isAvailabilityReadyForPackage(packageInfo) {
+  const key = getAvailabilityKey(packageInfo);
+  return Boolean(key && availabilityReadyKey === key);
+}
+
+function isAvailabilitySyncingForPackage(packageInfo) {
+  const key = getAvailabilityKey(packageInfo);
+  return Boolean(key && availabilitySyncingKey === key);
 }
 
 function getSelectedItemIds() {
