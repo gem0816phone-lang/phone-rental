@@ -166,8 +166,11 @@ h3 {
 }
 
 .button.primary:disabled {
-  cursor: wait;
-  opacity: 0.68;
+  background: #b9c0bd;
+  color: #eef2ef;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
   transform: none;
 }
 
@@ -259,6 +262,29 @@ h3 {
 .rental-summary h3,
 .rental-summary p {
   margin-bottom: 4px;
+}
+
+.phone-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.phone-title h3 {
+  margin-bottom: 0;
+}
+
+.phone-title span {
+  padding: 2px 8px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.4;
 }
 
 .rental-summary p {
@@ -382,6 +408,7 @@ textarea:focus {
   width: 9px;
   height: 9px;
   border-radius: 50%;
+  outline: 1px solid var(--ink);
 }
 
 .status-dot.available {
@@ -394,7 +421,6 @@ textarea:focus {
 
 .status-dot.selected {
   background: var(--lemon);
-  outline: 1px solid var(--ink);
 }
 
 .availability-status {
@@ -530,12 +556,6 @@ textarea:focus {
   display: block;
   color: var(--ink);
   font-size: 18px;
-}
-
-.form-note {
-  margin: -6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .selected-review {

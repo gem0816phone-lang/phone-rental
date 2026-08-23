@@ -3,6 +3,8 @@ const phone = {
   name: "vivo X300 Ultra",
   storage: "12/256GB",
   daily: 700,
+  discountedDaily: 600,
+  discountMinDays: 4,
   depositWithId: 5000,
   depositNoId: 30000,
   badge: "唯一機型",
@@ -105,7 +107,7 @@ function renderCalendar() {
     const isPast = date < today;
     const isFull = unavailableDates.has(dateString);
     const isSelected = selectedDates.has(dateString);
-    const status = isPast ? "已過" : isFull ? "已滿" : "可租";
+    const status = isPast ? "已過" : isFull ? "已滿" : "可選";
     const statusClass = isPast ? "status-past" : isSelected ? "status-selected" : isFull ? "status-full" : "status-available";
     const classes = ["calendar-day"];
 
@@ -162,24 +164,26 @@ function updateSelectionSummary() {
     return;
   }
 
-  const rentalTotal = days * phone.daily;
+  const dailyRate = getDailyRate(dates);
+  const rentalTotal = days * dailyRate;
   const dateText = dates.map(formatDateLabel).join("、");
   const depositOption = form.elements.depositOption?.value || "尚未選擇押金方式";
 
   estimateBox.innerHTML = `
     <strong>已選 ${days} 天，預估租金 ${currency.format(rentalTotal)}</strong>
-    ${dateText}
+    ${dateText}<br />
+    <span>${dailyRate} 元 / 日${dailyRate === phone.discountedDaily ? "，已套用連租優惠" : ""}</span>
   `;
   selectedDatesReview.innerHTML = `
     <strong>${phone.name} ${phone.storage}</strong>
     <span>租借日期：${dateText}</span>
-    <span>租金：${currency.format(rentalTotal)}，押金方式：${depositOption}</span>
+    <span>租金：${currency.format(rentalTotal)}（${dailyRate} 元 / 日），押金方式：${depositOption}</span>
   `;
 }
 
 function showDetailsStep() {
   if (!selectedDates.size) {
-    showStatus("error", "請先選擇至少一天可租日期。");
+    showStatus("error", "請先選擇至少一天可選日期。");
     return;
   }
 
@@ -225,13 +229,14 @@ async function handleSubmit(event) {
 
   const payload = new FormData(form);
   const reservationId = createReservationId();
-  const rentalTotal = dates.length * phone.daily;
-  const depositAmount = payload.get("depositOption") === "30000 元免證件" ? phone.depositNoId : phone.depositWithId;
+  const dailyRate = getDailyRate(dates);
+  const rentalTotal = dates.length * dailyRate;
+  const depositAmount = payload.get("depositOption") === "30000 元 (免證件)" ? phone.depositNoId : phone.depositWithId;
 
   payload.set("reservationId", reservationId);
   payload.set("modelName", phone.name);
   payload.set("storage", phone.storage);
-  payload.set("dailyPrice", String(phone.daily));
+  payload.set("dailyPrice", String(dailyRate));
   payload.set("deposit", String(depositAmount));
   payload.set("rentalDays", String(dates.length));
   payload.set("rentalTotal", String(rentalTotal));
@@ -324,6 +329,22 @@ function loadAvailability() {
 
 function getSelectedDateList() {
   return [...selectedDates].sort();
+}
+
+function getDailyRate(dates) {
+  return dates.length >= phone.discountMinDays && areConsecutiveDates(dates) ? phone.discountedDaily : phone.daily;
+}
+
+function areConsecutiveDates(dates) {
+  return dates.every((date, index) => {
+    if (index === 0) return true;
+
+    const previousDate = parseDate(dates[index - 1]);
+    const currentDate = parseDate(date);
+    const dayDifference = (currentDate - previousDate) / 86400000;
+
+    return dayDifference === 1;
+  });
 }
 
 function getAppsScriptUrl() {
