@@ -50,18 +50,17 @@ const comboPackage = {
 
 const pickupLocationOptions = [
   { label: "大直捷運站", fee: 0, feeLabel: "+ 0 元" },
-  { label: "台北小巨蛋", fee: 80, feeLabel: "+ 80 元" },
-  { label: "台北大巨蛋", fee: 100, feeLabel: "+ 100 元" },
-  { label: "其他地點取", fee: 0, feeLabel: "私訊詳談" }
+  { label: "台北小巨蛋", fee: 100, feeLabel: "+ 100 元", optionLabel: "台北小巨蛋 ｜ 未滿 3 日 + 100 元 ｜ 連續 3 日 + 0 元" },
+  { label: "台北大巨蛋", fee: 150, feeLabel: "+ 150 元", optionLabel: "台北大巨蛋 ｜ 未滿 3 日 + 150 元 ｜ 連續 3 日 + 0 元" }
 ];
 
 const dropoffLocationOptions = [
   { label: "大直捷運站", fee: 0, feeLabel: "+ 0 元" },
-  { label: "台北小巨蛋", fee: 80, feeLabel: "+ 80 元" },
-  { label: "台北大巨蛋", fee: 100, feeLabel: "+ 100 元" },
-  { label: "其他地點還", fee: 0, feeLabel: "私訊詳談" }
+  { label: "台北小巨蛋", fee: 100, feeLabel: "+ 100 元", optionLabel: "台北小巨蛋 ｜ 未滿 3 日 + 100 元 ｜ 連續 3 日 + 0 元" },
+  { label: "台北大巨蛋", fee: 150, feeLabel: "+ 150 元", optionLabel: "台北大巨蛋 ｜ 未滿 3 日 + 150 元 ｜ 連續 3 日 + 0 元" }
 ];
 const locationFeeWaiverMinDays = 3;
+const locationPlaceholderOption = { label: "請選擇地點", fee: 0, feeLabel: "+ 0 元" };
 
 const itemMap = new Map(rentalItems.map((item) => [item.id, item]));
 const addOnItemIds = new Set(rentalItems.filter((item) => item.canCoexist).map((item) => item.id));
@@ -248,8 +247,8 @@ function renderFeeLines(packageInfo) {
 }
 
 function renderLocationOptions() {
-  const selectedPickup = pickupLocationSelect.value || pickupLocationOptions[0].label;
-  const selectedDropoff = dropoffLocationSelect.value || dropoffLocationOptions[0].label;
+  const selectedPickup = pickupLocationSelect.value;
+  const selectedDropoff = dropoffLocationSelect.value;
   const dates = getSelectedDateList();
 
   pickupLocationSelect.innerHTML = renderLocationOptionList(pickupLocationOptions, dates);
@@ -259,13 +258,17 @@ function renderLocationOptions() {
 }
 
 function renderLocationOptionList(options, dates) {
-  return options.map((option) => {
+  const placeholder = '<option value="" disabled>請選擇地點</option>';
+  const optionItems = options.map((option) => {
     const effectiveOption = getEffectiveLocationOption(option, dates);
+    const label = option.optionLabel || `${option.label} ｜ ${effectiveOption.feeLabel}`;
 
     return `
-    <option value="${option.label}">${option.label} ｜ ${effectiveOption.feeLabel}</option>
+    <option value="${option.label}">${label}</option>
   `;
   }).join("");
+
+  return `${placeholder}${optionItems}`;
 }
 
 function getEffectiveLocationOption(option, dates) {
@@ -433,7 +436,7 @@ function formatRentalPeriod(dates) {
   const start = formatShortDate(dates[0]);
   const end = formatShortDate(dates[dates.length - 1]);
 
-  return start === end ? start : `${start} - ${end}`;
+  return `${start} 中午12點後 - ${end} 中午12點前`;
 }
 
 function formatShortDate(value) {
@@ -452,7 +455,7 @@ function getSelectedLocations(dates = getSelectedDateList()) {
 }
 
 function getLocationOption(options, value) {
-  return options.find((option) => option.label === value) || options[0];
+  return options.find((option) => option.label === value) || locationPlaceholderOption;
 }
 
 function getTotalLocationFee(dates = getSelectedDateList()) {
