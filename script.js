@@ -412,6 +412,10 @@ function renderDetailsReview(packageInfo, dates) {
     <div class="review-period">
       <strong>租借期間：${formatRentalPeriod(dates)}</strong>
     </div>
+    <div class="review-locations">
+      <span>取機：${formatPickupDateTime(dates)} ｜ ${locations.pickup.label} ｜ ${locations.pickup.feeLabel}</span>
+      <span>還機：${formatReturnDateTime(dates)} ｜ ${locations.dropoff.label} ｜ ${locations.dropoff.feeLabel}</span>
+    </div>
     <div class="review-packages">
       ${breakdown.lines.map((line) => `
         <div class="review-package">
@@ -425,18 +429,22 @@ function renderDetailsReview(packageInfo, dates) {
         <span>${index + 1}. ${item.name}${renderSummaryDetailSpec(item)}</span>
       `).join("")}
     </div>
-    <div class="review-locations">
-      <span>取機地點：${locations.pickup.label} ｜ ${locations.pickup.feeLabel}</span>
-      <span>還機地點：${locations.dropoff.label} ｜ ${locations.dropoff.feeLabel}</span>
-    </div>
   `;
 }
 
 function formatRentalPeriod(dates) {
   const start = formatShortDate(dates[0]);
-  const end = formatShortDate(getReturnDateValue(dates[dates.length - 1]));
+  const end = formatShortDate(dates[dates.length - 1]);
 
-  return `${start} 中午12點後 - ${end} 中午12點前`;
+  return start === end ? start : `${start} - ${end}`;
+}
+
+function formatPickupDateTime(dates) {
+  return `${formatShortDate(dates[0])} 中午12點後`;
+}
+
+function formatReturnDateTime(dates) {
+  return `${formatShortDate(getReturnDateValue(dates[dates.length - 1]))} 中午12點前`;
 }
 
 function getReturnDateValue(lastRentalDate) {
