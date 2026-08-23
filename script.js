@@ -12,7 +12,7 @@ const rentalItems = [
   },
   {
     id: "g2-ultra-400mm",
-    name: "G2 ultra 增距鏡",
+    name: "G2 Ultra 增距鏡",
     spec: "400mm",
     image: "G2 ultra 增距鏡 400mm.jpg",
     daily: 300,
