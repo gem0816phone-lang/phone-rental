@@ -272,8 +272,12 @@ h3 {
   position: relative;
   display: grid;
   grid-template-columns: minmax(96px, 24%) minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "type title"
+    "photo details";
+  column-gap: 14px;
+  align-items: stretch;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -324,6 +328,17 @@ h3 {
   white-space: nowrap;
 }
 
+.item-type-cell {
+  grid-area: type;
+  display: flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
 .option-type-pill.is-offer {
   border-color: var(--weekend-red);
   color: var(--weekend-red);
@@ -349,10 +364,12 @@ h3 {
 }
 
 .item-photo {
+  grid-area: photo;
   aspect-ratio: 1 / 1;
   display: block;
   width: min(100%, 128px);
   height: auto;
+  margin-top: 10px;
   place-self: center;
   border-radius: 7px;
 }
@@ -383,12 +400,16 @@ h3 {
 }
 
 .item-head {
+  grid-area: title;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
-  padding: 2px 0 10px;
+  min-width: 0;
+  min-height: 34px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
 }
 
 .item-title {
@@ -429,12 +450,12 @@ h3 {
 }
 
 .item-details {
+  grid-area: details;
   display: grid;
   min-width: 0;
   align-content: center;
   gap: 6px;
   padding-top: 10px;
-  border-top: 1px solid var(--line);
 }
 
 .summary-fees {

@@ -158,15 +158,15 @@ function renderItemOptions() {
   itemGrid.innerHTML = getPackageOptions().map((packageInfo) => `
     <label class="item-card" data-package-id="${packageInfo.id}">
       <input class="item-check" type="checkbox" name="packageId" value="${packageInfo.id}" />
+      <span class="item-type-cell">
+        <span class="option-type-pill${packageInfo.isAddOnOffer ? " is-offer" : ""}">${packageInfo.typeLabel}</span>
+      </span>
       ${renderPackageMedia(packageInfo, "item-photo")}
-      <span class="item-content">
-        <span class="item-head">
-          <span class="item-title">${renderOptionTitle(packageInfo)}</span>
-          <span class="option-type-pill${packageInfo.isAddOnOffer ? " is-offer" : ""}">${packageInfo.typeLabel}</span>
-        </span>
-        <span class="item-details">
-          ${renderFeeLines(packageInfo)}
-        </span>
+      <span class="item-head">
+        <span class="item-title">${renderOptionTitle(packageInfo)}</span>
+      </span>
+      <span class="item-details">
+        ${renderFeeLines(packageInfo)}
       </span>
     </label>
   `).join("");
