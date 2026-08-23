@@ -7,7 +7,7 @@ const rentalItems = [
     daily: 700,
     discountedDaily: 600,
     discountMinDays: 3,
-    depositWithId: 3000,
+    depositWithId: 4000,
     depositNoId: 30000
   },
   {
@@ -45,7 +45,7 @@ const comboPackage = {
   daily: 900,
   discountedDaily: 750,
   discountMinDays: 3,
-  depositWithId: 4000,
+  depositWithId: 5000,
   depositNoId: 40000
 };
 
