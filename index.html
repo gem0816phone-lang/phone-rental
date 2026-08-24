@@ -23,21 +23,25 @@
       name="twitter:description"
       content="vivo X300 Ultra ｜ G2 Ultra 增距鏡 ｜ Ray-Ban Meta 智慧眼鏡"
     />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260825-60" />
-    <script src="config.js?v=calendar-20260825-60" defer></script>
-    <script src="script.js?v=calendar-20260825-60" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260825-61" />
+    <script src="config.js?v=calendar-20260825-61" defer></script>
+    <script src="script.js?v=calendar-20260825-61" defer></script>
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="#booking" aria-label="回到租借預約">
-        <span class="brand-gem" aria-hidden="true"></span>
-        <span>租借預約</span>
-      </a>
+      <nav class="header-nav" aria-label="主要導覽">
+        <a class="brand" href="#booking" aria-label="前往租借預約">
+          <span class="brand-gem" aria-hidden="true"></span>
+          <span>租借預約</span>
+        </a>
+        <a class="brand showcase-nav-link" href="#showcase" aria-label="前往實拍展示">
+          <span class="brand-heart" aria-hidden="true"></span>
+          <span>實拍展示</span>
+        </a>
+      </nav>
       <a class="header-contact thread-link" href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">
         <span class="thread-icon" aria-hidden="true">@</span>
-        <span>聯絡資訊</span>
-        <span aria-hidden="true">｜</span>
-        <span>@gem0816phone</span>
+        <span>點我聯絡</span>
       </a>
     </header>
 
@@ -158,6 +162,16 @@
             <button class="button primary" type="button" id="successDialogConfirm">確認</button>
           </dialog>
         </aside>
+      </section>
+
+      <section class="showcase" id="showcase" aria-labelledby="showcase-title">
+        <div class="showcase-inner">
+          <div class="showcase-heading">
+            <h2 id="showcase-title">實拍展示</h2>
+          </div>
+          <div class="showcase-tabs" id="showcaseTabs" aria-label="實拍展示分類"></div>
+          <div class="showcase-grid" id="showcaseGrid" aria-live="polite"></div>
+        </div>
       </section>
 
     </main>

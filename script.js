@@ -71,6 +71,50 @@ const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
 const availabilityFetchTimeoutMs = 20000;
+const showcaseCategories = [
+  {
+    id: "vivo-x300-ultra",
+    label: "vivo X300 Ultra",
+    videos: [
+      {
+        title: "vivo X300 Ultra",
+        src: "media/showcase/vivo-x300-ultra-01.mp4",
+        poster: "media/showcase/vivo-x300-ultra-01.jpg",
+        ratio: "9 / 16"
+      }
+    ]
+  },
+  {
+    id: "vivo-x300-ultra-g2-400mm",
+    label: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm",
+    videos: [
+      {
+        title: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm",
+        src: "media/showcase/vivo-x300-ultra-g2-400mm-01.mp4",
+        poster: "media/showcase/vivo-x300-ultra-g2-400mm-01.jpg",
+        ratio: "9 / 16"
+      }
+    ]
+  },
+  {
+    id: "ray-ban-meta",
+    label: "Ray-Ban Meta 智慧眼鏡",
+    videos: [
+      {
+        title: "Ray-Ban Meta 智慧眼鏡 01",
+        src: "media/showcase/ray-ban-meta-01.mp4",
+        poster: "media/showcase/ray-ban-meta-01.jpg",
+        ratio: "97 / 129"
+      },
+      {
+        title: "Ray-Ban Meta 智慧眼鏡 02",
+        src: "media/showcase/ray-ban-meta-02.mp4",
+        poster: "media/showcase/ray-ban-meta-02.jpg",
+        ratio: "97 / 129"
+      }
+    ]
+  }
+];
 
 const form = document.querySelector("#reservationForm");
 const bookingTitle = document.querySelector("#booking-title");
@@ -105,6 +149,8 @@ const successDialogConfirm = document.querySelector("#successDialogConfirm");
 const availabilityStatus = document.querySelector("#availabilityStatus");
 const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
+const showcaseTabs = document.querySelector("#showcaseTabs");
+const showcaseGrid = document.querySelector("#showcaseGrid");
 
 const today = startOfDay(new Date());
 const localBookedDatesByItem = {};
@@ -120,6 +166,7 @@ let availabilityReadyKey = "";
 let availabilitySyncingKey = "";
 let availabilityRequestId = 0;
 let availabilityAbortController = null;
+let activeShowcaseCategoryId = showcaseCategories[0]?.id || "";
 
 init();
 
@@ -127,6 +174,7 @@ function init() {
   renderItemOptions();
   renderLocationOptions();
   renderDepositOptions();
+  renderShowcase();
   applyBusinessConfig();
   bindEvents();
   showItemStep();
@@ -169,6 +217,52 @@ function bindEvents() {
     }
   });
   form.addEventListener("submit", handleSubmit);
+  showcaseTabs.addEventListener("click", (event) => {
+    const tab = event.target.closest("[data-showcase-id]");
+
+    if (!tab) {
+      return;
+    }
+
+    activeShowcaseCategoryId = tab.dataset.showcaseId;
+    renderShowcase();
+  });
+}
+
+function renderShowcase() {
+  const activeCategory = getActiveShowcaseCategory();
+
+  showcaseTabs.innerHTML = showcaseCategories.map((category) => `
+    <button
+      class="showcase-tab${category.id === activeCategory.id ? " is-active" : ""}"
+      type="button"
+      data-showcase-id="${escapeHtml(category.id)}"
+      aria-pressed="${category.id === activeCategory.id ? "true" : "false"}"
+    >
+      ${escapeHtml(category.label)}
+    </button>
+  `).join("");
+
+  showcaseGrid.classList.toggle("is-single", activeCategory.videos.length === 1);
+  showcaseGrid.innerHTML = activeCategory.videos.map((video) => `
+    <article class="showcase-video-card">
+      <video
+        class="showcase-video"
+        controls
+        playsinline
+        preload="metadata"
+        poster="${escapeHtml(video.poster)}"
+        style="--video-ratio: ${escapeHtml(video.ratio)}"
+      >
+        <source src="${escapeHtml(video.src)}" type="video/mp4" />
+      </video>
+      <h3>${escapeHtml(video.title)}</h3>
+    </article>
+  `).join("");
+}
+
+function getActiveShowcaseCategory() {
+  return showcaseCategories.find((category) => category.id === activeShowcaseCategoryId) || showcaseCategories[0];
 }
 
 function renderItemOptions() {
