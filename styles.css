@@ -1456,6 +1456,7 @@ textarea:focus {
   margin: 0;
   padding-left: 1.4em;
   color: var(--ink);
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -1464,6 +1465,7 @@ textarea:focus {
   padding-top: 12px;
   border-top: 1px solid rgba(29, 38, 40, 0.12);
   color: #c2410c;
+  font-size: 15px;
   font-weight: 900;
 }
 
