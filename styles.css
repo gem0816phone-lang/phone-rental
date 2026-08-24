@@ -1467,6 +1467,12 @@ textarea:focus {
   font-weight: 900;
 }
 
+.guide-subsection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(219, 39, 119, 0.18);
+}
+
 .thread-link {
   display: inline-flex;
   align-items: center;
