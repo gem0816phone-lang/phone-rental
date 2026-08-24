@@ -70,7 +70,7 @@ const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month
 const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
-const availabilityFetchTimeoutMs = 12000;
+const availabilityFetchTimeoutMs = 20000;
 
 const form = document.querySelector("#reservationForm");
 const bookingTitle = document.querySelector("#booking-title");
@@ -599,6 +599,7 @@ function handleItemSelectionChange(event) {
   renderDepositOptions();
   renderCalendar();
   updateSelectionSummary();
+  loadAvailability();
 }
 
 function updateItemSelection() {
@@ -884,9 +885,14 @@ function showDateStep() {
   setActiveStep("date");
   clearStatus();
   renderDepositOptions();
-  renderCalendar();
-  updateSelectionSummary();
-  loadAvailability();
+
+  if (isAvailabilityReadyForPackage(packageInfo) || isAvailabilitySyncingForPackage(packageInfo)) {
+    renderCalendar();
+    updateSelectionSummary();
+  } else {
+    loadAvailability();
+  }
+
   scrollToPageTop();
 }
 

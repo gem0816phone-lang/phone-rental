@@ -10,6 +10,7 @@ const ITEM_LABELS = {
   [ITEM_RAYBAN]: "Ray-Ban Meta 智慧眼鏡 方框M"
 };
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
+const AVAILABILITY_CACHE_SECONDS = 15;
 const STATUS_OPTIONS = ["待定", "已確認", "已取消", "新預約"];
 const TELEGRAM_BOT_TOKEN_PROPERTY = "TELEGRAM_BOT_TOKEN";
 const TELEGRAM_CHAT_ID_PROPERTY = "TELEGRAM_CHAT_ID";
@@ -93,7 +94,7 @@ function doGet(e) {
 
   if (params.action === "availability") {
     const requestedItemIds = getRequestedItemIds_(params);
-    const availability = getAvailabilityByDate_(requestedItemIds);
+    const availability = getCachedAvailabilityByDate_(requestedItemIds);
 
     return output_(
       {
@@ -177,8 +178,9 @@ function doPost(e) {
       "備註": text_(data.notes)
     };
 
-    sheet.appendRow(headers.map((header) => valueOrBlank_(rowData, header)));
+    appendReservationRow_(sheet, headers, rowData);
     formatReservationSheet_(sheet, headers);
+    clearAvailabilityCache_();
     notifyTelegramReservation_(rowData, requestedDates);
 
     return json_({ ok: true, reservationId: data.reservationId });
@@ -306,6 +308,19 @@ function repairReservationRow_(rowData) {
   }
 }
 
+function appendReservationRow_(sheet, headers, rowData) {
+  const nextRow = Math.max(sheet.getLastRow() + 1, 2);
+
+  if (nextRow > sheet.getMaxRows()) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), nextRow - sheet.getMaxRows());
+  }
+
+  applyRowFormats_(sheet, headers, nextRow);
+  sheet.getRange(nextRow, 1, 1, headers.length).setValues([
+    headers.map((header) => valueOrBlank_(rowData, header))
+  ]);
+}
+
 function getRentalDaysFromRowData_(rowData) {
   const days = number_(rowData["租借天數"]);
 
@@ -355,6 +370,8 @@ function formatReservationSheet_(sheet, headers) {
     .setWrap(true);
 
   applyColumnFormats_(sheet, headers);
+  repairPhoneColumn_(sheet, headers);
+  repairGeneratedFeeColumns_(sheet, headers);
   applyStatusValidation_(sheet, headers);
   applyColumnWidths_(sheet, headers);
   applyHiddenColumns_(sheet, headers);
@@ -362,8 +379,8 @@ function formatReservationSheet_(sheet, headers) {
 
 function applyColumnFormats_(sheet, headers) {
   const maxRows = Math.max(sheet.getMaxRows() - 1, 1);
-  const dateHeaders = ["建立時間", "租借開始日期", "租借結束日期"];
-  const textHeaders = ["預約編號", "電話", "thread 帳號", "取機加價", "還機加價", "押金方式", "租借日期", "物品 ID"];
+  const dateHeaders = getDateFormatHeaders_();
+  const textHeaders = getTextFormatHeaders_();
 
   dateHeaders.forEach((header) => {
     const column = getHeaderColumn_(headers, header);
@@ -380,6 +397,110 @@ function applyColumnFormats_(sheet, headers) {
       sheet.getRange(2, column, maxRows, 1).setNumberFormat("@");
     }
   });
+}
+
+function applyRowFormats_(sheet, headers, row) {
+  getDateFormatHeaders_().forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (column) {
+      sheet.getRange(row, column).setNumberFormat("yyyy-mm-dd hh:mm");
+    }
+  });
+
+  getTextFormatHeaders_().forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (column) {
+      sheet.getRange(row, column).setNumberFormat("@");
+    }
+  });
+}
+
+function repairPhoneColumn_(sheet, headers) {
+  const phoneColumn = getHeaderColumn_(headers, "電話");
+  const dataRows = sheet.getLastRow() - 1;
+
+  if (!phoneColumn || dataRows < 1) {
+    return;
+  }
+
+  const range = sheet.getRange(2, phoneColumn, dataRows, 1);
+  const values = range.getDisplayValues();
+  let hasChanges = false;
+  const nextValues = values.map(([value]) => {
+    const normalized = normalizePhoneForSheet_(value);
+
+    if (normalized !== value) {
+      hasChanges = true;
+    }
+
+    return [normalized];
+  });
+
+  range.setNumberFormat("@");
+
+  if (hasChanges) {
+    range.setValues(nextValues);
+  }
+}
+
+function normalizePhoneForSheet_(value) {
+  const visibleValue = plainText_(value).replace(/^'/, "");
+  const digits = visibleValue.replace(/\D/g, "");
+
+  if (/^09\d{8}$/.test(digits)) {
+    return digits;
+  }
+
+  if (/^9\d{8}$/.test(digits)) {
+    return `0${digits}`;
+  }
+
+  return visibleValue;
+}
+
+function repairGeneratedFeeColumns_(sheet, headers) {
+  const dataRows = sheet.getLastRow() - 1;
+
+  if (dataRows < 1) {
+    return;
+  }
+
+  ["取機加價", "還機加價"].forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (!column) {
+      return;
+    }
+
+    const range = sheet.getRange(2, column, dataRows, 1);
+    const values = range.getDisplayValues();
+    let hasChanges = false;
+    const nextValues = values.map(([value]) => {
+      const cleaned = formatTelegramText_(value);
+
+      if (cleaned !== value) {
+        hasChanges = true;
+      }
+
+      return [cleaned];
+    });
+
+    range.setNumberFormat("@");
+
+    if (hasChanges) {
+      range.setValues(nextValues);
+    }
+  });
+}
+
+function getDateFormatHeaders_() {
+  return ["建立時間", "租借開始日期", "租借結束日期"];
+}
+
+function getTextFormatHeaders_() {
+  return ["預約編號", "電話", "thread 帳號", "取機加價", "還機加價", "押金方式", "租借日期", "物品 ID"];
 }
 
 function applyStatusValidation_(sheet, headers) {
@@ -529,9 +650,9 @@ function buildTelegramReservationMessage_(rowData, requestedDates) {
     `已選 ${requestedDates.length} 日 ｜ ${period}${discountLabel}`,
     TELEGRAM_SEPARATOR,
     `取機時間：${formatTelegramPickupDateTime_(requestedDates)}`,
-    `取機地點：${rowData["取機地點"]} ｜ ${rowData["取機加價"]}`,
+    `取機地點：${formatTelegramText_(rowData["取機地點"])} ｜ ${formatTelegramFeeLabel_(rowData["取機加價"])}`,
     `還機時間：${formatTelegramReturnDateTime_(requestedDates)}`,
-    `還機地點：${rowData["還機地點"]} ｜ ${rowData["還機加價"]}`,
+    `還機地點：${formatTelegramText_(rowData["還機地點"])} ｜ ${formatTelegramFeeLabel_(rowData["還機加價"])}`,
     TELEGRAM_SEPARATOR,
     formatTelegramRentalLines_(rentalLines),
     TELEGRAM_SEPARATOR,
@@ -684,6 +805,21 @@ function formatTelegramAmount_(value) {
   return Number.isFinite(numberValue) ? String(Math.round(numberValue)) : plainText_(value);
 }
 
+function formatTelegramFeeLabel_(value) {
+  const cleanValue = formatTelegramText_(value);
+  const amountMatch = cleanValue.match(/-?\d+/);
+
+  if (!amountMatch) {
+    return cleanValue;
+  }
+
+  return `+ ${Math.max(Number(amountMatch[0]), 0)} 元`;
+}
+
+function formatTelegramText_(value) {
+  return plainText_(value).replace(/^'(?=[=+\-@])/, "");
+}
+
 function sendTelegramMessage_(botToken, chatId, message) {
   const response = UrlFetchApp.fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: "post",
@@ -728,9 +864,55 @@ function logTelegramUpdates() {
   Logger.log(response.getContentText());
 }
 
+function repairReservationSheet() {
+  const sheet = getReservationSheet_();
+  const headers = ensureHeaders_(sheet);
+  formatReservationSheet_(sheet, headers);
+  return "ok";
+}
+
 function getBookedDates_(targetItemIds) {
   const bookedDateSet = getBookedDateSet_(targetItemIds);
   return Object.keys(bookedDateSet).sort();
+}
+
+function getCachedAvailabilityByDate_(targetItemIds) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = buildAvailabilityCacheKey_(targetItemIds);
+  const cachedValue = cache.get(cacheKey);
+
+  if (cachedValue) {
+    try {
+      return JSON.parse(cachedValue);
+    } catch (error) {
+      cache.remove(cacheKey);
+    }
+  }
+
+  const availability = getAvailabilityByDate_(targetItemIds);
+  cache.put(cacheKey, JSON.stringify(availability), AVAILABILITY_CACHE_SECONDS);
+  return availability;
+}
+
+function clearAvailabilityCache_() {
+  CacheService.getScriptCache().removeAll(getAvailabilityCacheKeys_());
+}
+
+function getAvailabilityCacheKeys_() {
+  const keys = [buildAvailabilityCacheKey_([])];
+  const itemCount = KNOWN_ITEM_IDS.length;
+
+  for (let mask = 1; mask < (1 << itemCount); mask += 1) {
+    const itemIds = KNOWN_ITEM_IDS.filter((itemId, index) => mask & (1 << index));
+    keys.push(buildAvailabilityCacheKey_(itemIds));
+  }
+
+  return keys;
+}
+
+function buildAvailabilityCacheKey_(targetItemIds) {
+  const itemIds = normalizeItemIds_(Array.isArray(targetItemIds) ? targetItemIds.join(",") : targetItemIds).sort();
+  return `availability:${itemIds.join("|") || "all"}`;
 }
 
 function getAvailabilityByDate_(targetItemIds) {
@@ -1234,7 +1416,16 @@ function valueOrBlank_(rowData, header) {
   }
 
   const value = rowData[header];
-  return typeof value === "string" ? text_(value) : value;
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  return isGeneratedFeeHeader_(header) ? plainText_(value) : text_(value);
+}
+
+function isGeneratedFeeHeader_(header) {
+  return header === "取機加價" || header === "還機加價";
 }
 
 function text_(value) {
