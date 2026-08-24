@@ -127,6 +127,27 @@ a {
     linear-gradient(145deg, transparent 49%, rgba(30, 64, 175, 0.28) 50% 52%, transparent 53%);
 }
 
+.brand-gem.is-pink {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0 18%, transparent 19%),
+    linear-gradient(55deg, transparent 33%, rgba(190, 24, 93, 0.34) 34% 37%, transparent 38%),
+    linear-gradient(125deg, transparent 33%, rgba(190, 24, 93, 0.38) 34% 37%, transparent 38%),
+    linear-gradient(180deg, #fbcfe8 0 31%, #f472b6 32% 62%, #db2777 63% 100%);
+  filter: drop-shadow(0 3px 0 rgba(190, 24, 93, 0.22));
+}
+
+.brand-gem.is-pink::before {
+  border-right-color: rgba(255, 255, 255, 0.62);
+  border-left-color: rgba(190, 24, 93, 0.32);
+}
+
+.brand-gem.is-pink::after {
+  background:
+    linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.48) 49% 51%, transparent 52%),
+    linear-gradient(35deg, transparent 49%, rgba(190, 24, 93, 0.32) 50% 52%, transparent 53%),
+    linear-gradient(145deg, transparent 49%, rgba(190, 24, 93, 0.24) 50% 52%, transparent 53%);
+}
+
 .brand.is-active {
   color: var(--teal-dark);
 }
@@ -1368,6 +1389,72 @@ textarea:focus {
   object-fit: contain;
 }
 
+.guide {
+  padding: clamp(18px, 5vw, 48px) clamp(12px, 4vw, 32px) clamp(48px, 7vw, 76px);
+}
+
+.guide-inner {
+  width: min(100%, 960px);
+  margin: 0 auto;
+}
+
+.guide-heading {
+  margin-bottom: 14px;
+}
+
+.guide-heading h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.guide-block {
+  padding: clamp(16px, 3vw, 22px);
+  border: 1px solid rgba(29, 38, 40, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(29, 38, 40, 0.08);
+}
+
+.guide-block-accent {
+  border-color: rgba(219, 39, 119, 0.28);
+  background: #fff7fb;
+}
+
+.guide-block-wide {
+  grid-column: 1 / -1;
+}
+
+.guide-block h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.guide-block ol,
+.guide-block ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.4em;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.guide-block p {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(29, 38, 40, 0.12);
+  color: #db2777;
+  font-weight: 900;
+}
+
 .thread-link {
   display: inline-flex;
   align-items: center;
@@ -1480,6 +1567,14 @@ textarea:focus {
 
   .showcase-heading h2 {
     font-size: 21px;
+  }
+
+  .guide-heading h2 {
+    font-size: 21px;
+  }
+
+  .guide-grid {
+    grid-template-columns: 1fr;
   }
 
   .showcase-tab {

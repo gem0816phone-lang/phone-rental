@@ -153,7 +153,8 @@ const showcaseTabs = document.querySelector("#showcaseTabs");
 const showcaseGrid = document.querySelector("#showcaseGrid");
 const pageSections = {
   booking: document.querySelector("#booking"),
-  showcase: document.querySelector("#showcase")
+  showcase: document.querySelector("#showcase"),
+  guide: document.querySelector("#guide")
 };
 const pageLinks = document.querySelectorAll("[data-page-link]");
 
@@ -251,7 +252,8 @@ function bindEvents() {
 }
 
 function syncPageFromHash(shouldScroll) {
-  const page = window.location.hash === "#showcase" ? "showcase" : "booking";
+  const hashPage = window.location.hash.replace("#", "");
+  const page = pageSections[hashPage] ? hashPage : "booking";
   showPage(page, shouldScroll);
 }
 

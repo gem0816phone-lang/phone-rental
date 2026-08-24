@@ -23,9 +23,9 @@
       name="twitter:description"
       content="vivo X300 Ultra ｜ G2 Ultra 增距鏡 ｜ Ray-Ban Meta 智慧眼鏡"
     />
-    <link rel="stylesheet" href="styles.css?v=calendar-20260825-63" />
-    <script src="config.js?v=calendar-20260825-63" defer></script>
-    <script src="script.js?v=calendar-20260825-63" defer></script>
+    <link rel="stylesheet" href="styles.css?v=calendar-20260825-64" />
+    <script src="config.js?v=calendar-20260825-64" defer></script>
+    <script src="script.js?v=calendar-20260825-64" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -37,6 +37,10 @@
         <a class="brand showcase-nav-link" href="#showcase" data-page-link="showcase" aria-label="前往實拍展示">
           <span class="brand-gem is-blue" aria-hidden="true"></span>
           <span>實拍展示</span>
+        </a>
+        <a class="brand" href="#guide" data-page-link="guide" aria-label="前往租借說明">
+          <span class="brand-gem is-pink" aria-hidden="true"></span>
+          <span>租借說明</span>
         </a>
       </nav>
       <a class="header-contact thread-link" href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">
@@ -164,13 +168,55 @@
         </aside>
       </section>
 
-      <section class="showcase page-section" id="showcase" aria-labelledby="showcase-title">
+      <section class="showcase page-section" id="showcase" aria-labelledby="showcase-title" hidden>
         <div class="showcase-inner">
           <div class="showcase-heading">
             <h2 id="showcase-title">實拍展示</h2>
           </div>
           <div class="showcase-tabs" id="showcaseTabs" aria-label="實拍展示分類"></div>
           <div class="showcase-grid" id="showcaseGrid" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="guide page-section" id="guide" aria-labelledby="guide-title" hidden>
+        <div class="guide-inner">
+          <div class="guide-heading">
+            <h2 id="guide-title">租借說明</h2>
+          </div>
+
+          <div class="guide-grid">
+            <article class="guide-block">
+              <h3>租借流程</h3>
+              <ol>
+                <li>網站填寫租借預約表單</li>
+                <li>私訊 Threads 確認訂單並支付訂金</li>
+                <li>面交確認設備及現場支付剩餘款項</li>
+                <li>面交歸還設備確認無損後當場退回押金</li>
+              </ol>
+            </article>
+
+            <article class="guide-block guide-block-accent">
+              <h3>額外優惠</h3>
+              <ol>
+                <li>非首次租借</li>
+                <li>公開發文推薦租借</li>
+                <li>鄧紫棋粉絲（需提供粉絲證明）</li>
+                <li>實拍高清影片回傳提供網站宣傳</li>
+              </ol>
+              <p>以上任一條件，皆優惠 100 元，可疊加。</p>
+            </article>
+
+            <article class="guide-block guide-block-wide">
+              <h3>注意事項</h3>
+              <ul>
+                <li>租借人需年滿 18 歲，禁止轉租。</li>
+                <li>面交地點可私訊協調，視距離加價。</li>
+                <li>取還機時間若前後日期無人租借，皆可私訊協調。</li>
+                <li>租借的設備非相機功能若有受損，將視情況扣除押金。</li>
+                <li>租借的設備相機功能若有受損，需照原購買價格買斷。</li>
+              </ul>
+            </article>
+          </div>
         </div>
       </section>
 
