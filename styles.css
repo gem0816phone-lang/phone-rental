@@ -1418,8 +1418,8 @@ textarea:focus {
 }
 
 .guide-block-offer {
-  border-color: rgba(219, 39, 119, 0.28);
-  background: #fff7fb;
+  border-color: rgba(59, 130, 246, 0.24);
+  background: #f6fbff;
 }
 
 .guide-block-note {
@@ -1442,7 +1442,7 @@ textarea:focus {
 }
 
 .guide-block-offer h3 {
-  color: #be185d;
+  color: #1d4ed8;
 }
 
 .guide-block-note h3 {
@@ -1463,14 +1463,14 @@ textarea:focus {
   margin: 14px 0 0;
   padding-top: 12px;
   border-top: 1px solid rgba(29, 38, 40, 0.12);
-  color: #db2777;
+  color: #c2410c;
   font-weight: 900;
 }
 
 .guide-subsection {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(219, 39, 119, 0.18);
+  border-top: 1px solid rgba(59, 130, 246, 0.18);
 }
 
 .thread-link {
