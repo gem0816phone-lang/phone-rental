@@ -1389,6 +1389,54 @@ textarea:focus {
   object-fit: contain;
 }
 
+.showcase-seat-map-button {
+  justify-self: center;
+  min-height: 38px;
+  padding: 8px 18px;
+  border: 1px solid rgba(30, 64, 175, 0.22);
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.showcase-seat-map-button:hover,
+.showcase-seat-map-button:focus {
+  transform: translateY(-1px);
+}
+
+.seat-map-dialog {
+  width: min(720px, calc(100vw - 24px));
+}
+
+.seat-map-dialog-body {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.seat-map-image {
+  display: block;
+  width: 100%;
+  max-height: min(72vh, 720px);
+  border: 1px solid rgba(29, 38, 40, 0.12);
+  border-radius: 6px;
+  background: #f7f4ee;
+  object-fit: contain;
+}
+
+.seat-map-dialog-body p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  text-align: center;
+}
+
 .guide {
   padding: clamp(18px, 5vw, 48px) clamp(12px, 4vw, 32px) clamp(48px, 7vw, 76px);
 }

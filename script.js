@@ -81,7 +81,11 @@ const showcaseCategories = [
         title: "vivo X300 Ultra",
         src: "media/showcase/vivo-x300-ultra-01.mp4",
         poster: "media/showcase/vivo-x300-ultra-01.jpg",
-        ratio: "9 / 16"
+        ratio: "9 / 16",
+        seatMap: {
+          src: "media/showcase/vivo-x300-ultra-01-position.png",
+          alt: "vivo X300 Ultra 座位圖"
+        }
       }
     ]
   },
@@ -93,7 +97,21 @@ const showcaseCategories = [
         title: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm",
         src: "media/showcase/vivo-x300-ultra-g2-400mm-01.mp4",
         poster: "media/showcase/vivo-x300-ultra-g2-400mm-01.jpg",
-        ratio: "9 / 16"
+        ratio: "9 / 16",
+        seatMap: {
+          src: "media/showcase/vivo-x300-ultra-g2-400mm-01-position.png",
+          alt: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm 座位圖 01"
+        }
+      },
+      {
+        title: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm 02",
+        src: "media/showcase/vivo-x300-ultra-g2-400mm-02.mp4",
+        poster: "media/showcase/vivo-x300-ultra-g2-400mm-02.jpg",
+        ratio: "9 / 16",
+        seatMap: {
+          src: "media/showcase/vivo-x300-ultra-g2-400mm-02-position.png",
+          alt: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm 座位圖 02"
+        }
       }
     ]
   },
@@ -152,6 +170,9 @@ const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
 const showcaseTabs = document.querySelector("#showcaseTabs");
 const showcaseGrid = document.querySelector("#showcaseGrid");
+const seatMapDialog = document.querySelector("#seatMapDialog");
+const seatMapDialogBody = document.querySelector("#seatMapDialogBody");
+const seatMapDialogClose = document.querySelector("#seatMapDialogClose");
 const pageSections = {
   booking: document.querySelector("#booking"),
   showcase: document.querySelector("#showcase"),
@@ -225,6 +246,15 @@ function bindEvents() {
     }
   });
   form.addEventListener("submit", handleSubmit);
+  showcaseGrid.addEventListener("click", (event) => {
+    const seatMapButton = event.target.closest("[data-seat-map-index]");
+
+    if (!seatMapButton) {
+      return;
+    }
+
+    showSeatMapDialog(Number(seatMapButton.dataset.seatMapIndex));
+  });
   showcaseTabs.addEventListener("click", (event) => {
     const tab = event.target.closest("[data-showcase-id]");
 
@@ -234,6 +264,12 @@ function bindEvents() {
 
     activeShowcaseCategoryId = tab.dataset.showcaseId;
     renderShowcase();
+  });
+  seatMapDialogClose.addEventListener("click", () => seatMapDialog.close());
+  seatMapDialog.addEventListener("click", (event) => {
+    if (event.target === seatMapDialog) {
+      seatMapDialog.close();
+    }
   });
   pageLinks.forEach((link) => {
     link.addEventListener("click", (event) => {
@@ -294,7 +330,7 @@ function renderShowcase() {
   `).join("");
 
   showcaseGrid.classList.toggle("is-single", activeCategory.videos.length === 1);
-  showcaseGrid.innerHTML = activeCategory.videos.map((video) => `
+  showcaseGrid.innerHTML = activeCategory.videos.map((video, index) => `
     <article class="showcase-video-card">
       <video
         class="showcase-video"
@@ -306,12 +342,36 @@ function renderShowcase() {
       >
         <source src="${escapeHtml(video.src)}" type="video/mp4" />
       </video>
+      ${video.seatMap ? `
+        <button class="showcase-seat-map-button" type="button" data-seat-map-index="${index}">座位圖</button>
+      ` : ""}
     </article>
   `).join("");
 }
 
 function getActiveShowcaseCategory() {
   return showcaseCategories.find((category) => category.id === activeShowcaseCategoryId) || showcaseCategories[0];
+}
+
+function showSeatMapDialog(videoIndex) {
+  const activeCategory = getActiveShowcaseCategory();
+  const seatMap = activeCategory.videos[videoIndex]?.seatMap;
+  const caption = "圖片黃點為拍攝位置";
+
+  if (!seatMap) {
+    return;
+  }
+
+  if (!seatMapDialog.showModal) {
+    window.open(seatMap.src, "_blank", "noopener");
+    return;
+  }
+
+  seatMapDialogBody.innerHTML = `
+    <img class="seat-map-image" src="${escapeHtml(seatMap.src)}" alt="${escapeHtml(seatMap.alt)}" />
+    <p>${caption}</p>
+  `;
+  seatMapDialog.showModal();
 }
 
 function renderItemOptions() {
