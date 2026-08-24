@@ -10,7 +10,7 @@ const ITEM_LABELS = {
   [ITEM_RAYBAN]: "Ray-Ban Meta 智慧眼鏡 方框M"
 };
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
-const STATUS_OPTIONS = ["新預約", "已確認", "已取消"];
+const STATUS_OPTIONS = ["待定", "已確認", "已取消", "新預約"];
 const TELEGRAM_BOT_TOKEN_PROPERTY = "TELEGRAM_BOT_TOKEN";
 const TELEGRAM_CHAT_ID_PROPERTY = "TELEGRAM_CHAT_ID";
 const TELEGRAM_SEPARATOR = "-------------------------------------------------";
@@ -90,23 +90,26 @@ const HIDDEN_HEADERS = [
 
 function doGet(e) {
   const params = (e && e.parameter) || {};
-  const spreadsheet = getReservationSpreadsheet_();
 
   if (params.action === "availability") {
     const requestedItemIds = getRequestedItemIds_(params);
-    const unavailableItemsByDate = getBookedItemsByDate_(requestedItemIds);
+    const availability = getAvailabilityByDate_(requestedItemIds);
 
     return output_(
       {
         ok: true,
-        unavailableDates: Object.keys(unavailableItemsByDate).sort(),
-        unavailableItemsByDate,
+        unavailableDates: Object.keys(availability.bookedItemsByDate).sort(),
+        unavailableItemsByDate: availability.bookedItemsByDate,
+        pendingDates: Object.keys(availability.pendingReservationsByDate).sort(),
+        pendingReservationsByDate: availability.pendingReservationsByDate,
         requestedItems: requestedItemIds,
         generatedAt: new Date().toISOString()
       },
       params.callback
     );
   }
+
+  const spreadsheet = getReservationSpreadsheet_();
 
   return output_(
     {
@@ -148,7 +151,7 @@ function doPost(e) {
     const headers = ensureHeaders_(sheet);
     const rowData = {
       "建立時間": new Date(),
-      "狀態": "新預約",
+      "狀態": "待定",
       "預約編號": text_(data.reservationId),
       "姓名": text_(data.customerName),
       "電話": text_(data.phone),
@@ -186,12 +189,21 @@ function doPost(e) {
   }
 }
 
-function getReservationSheet_() {
+function getReservationSheet_(options) {
+  const skipFormat = Boolean(options && options.skipFormat);
   const spreadsheet = getReservationSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEET_NAME);
+  }
+
+  if (skipFormat) {
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(HEADERS);
+    }
+
+    return sheet;
   }
 
   ensureHeaders_(sheet);
@@ -290,7 +302,7 @@ function repairReservationRow_(rowData) {
   }
 
   if (!rowData["狀態"]) {
-    rowData["狀態"] = "新預約";
+    rowData["狀態"] = "待定";
   }
 }
 
@@ -386,9 +398,15 @@ function applyStatusValidation_(sheet, headers) {
   range.setDataValidation(validation);
   sheet.setConditionalFormatRules([
     SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo("待定")
+      .setBackground("#fef3c7")
+      .setFontColor("#92400e")
+      .setRanges([range])
+      .build(),
+    SpreadsheetApp.newConditionalFormatRule()
       .whenTextEqualTo("新預約")
-      .setBackground("#fff7ed")
-      .setFontColor("#9a3412")
+      .setBackground("#fef3c7")
+      .setFontColor("#92400e")
       .setRanges([range])
       .build(),
     SpreadsheetApp.newConditionalFormatRule()
@@ -715,12 +733,13 @@ function getBookedDates_(targetItemIds) {
   return Object.keys(bookedDateSet).sort();
 }
 
-function getBookedItemsByDate_(targetItemIds) {
+function getAvailabilityByDate_(targetItemIds) {
   const bookedItemsByDate = {};
-  const sheet = getReservationSheet_();
+  const pendingReservationsByDate = {};
+  const sheet = getReservationSheet_({ skipFormat: true });
 
   if (sheet.getLastRow() < 2) {
-    return bookedItemsByDate;
+    return { bookedItemsByDate, pendingReservationsByDate };
   }
 
   const values = sheet.getDataRange().getValues();
@@ -746,6 +765,73 @@ function getBookedItemsByDate_(targetItemIds) {
       return;
     }
 
+    if (isPending_(status)) {
+      const entry = {
+        reservationId,
+        createdAt: normalizeDateTimeValue_(row[indexes["建立時間"]]),
+        createdAtLabel: formatPendingCreatedAt_(row[indexes["建立時間"]]),
+        status: status || "待定",
+        items: overlapItemIds.map(getItemLabel_)
+      };
+
+      getDatesFromRow_(row, indexes).forEach((date) => {
+        addPendingReservation_(pendingReservationsByDate, date, entry);
+      });
+
+      return;
+    }
+
+    if (isConfirmed_(status)) {
+      getDatesFromRow_(row, indexes).forEach((date) => {
+        overlapItemIds.forEach((itemId) => {
+          addBookedItemLabel_(bookedItemsByDate, date, getItemLabel_(itemId));
+        });
+      });
+    }
+  });
+
+  Object.keys(pendingReservationsByDate).forEach((date) => {
+    pendingReservationsByDate[date].sort(comparePendingReservation_);
+  });
+
+  return { bookedItemsByDate, pendingReservationsByDate };
+}
+
+function getBookedItemsByDate_(targetItemIds) {
+  const bookedItemsByDate = {};
+  const sheet = getReservationSheet_({ skipFormat: true });
+
+  if (sheet.getLastRow() < 2) {
+    return bookedItemsByDate;
+  }
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(canonicalHeader_);
+  const indexes = buildHeaderIndex_(headers);
+  const requestedItemSet = toSet_(targetItemIds || []);
+  const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
+
+  values.slice(1).forEach((row) => {
+    const status = getCell_(row, indexes, "狀態");
+    const reservationId = getCell_(row, indexes, "預約編號");
+
+    if (reservationId.indexOf("TEST-") === 0 || isCanceled_(status)) {
+      return;
+    }
+
+    if (!isConfirmed_(status)) {
+      return;
+    }
+
+    const rowItemIds = getItemIdsFromRow_(row, indexes);
+    const overlapItemIds = shouldFilterByItem
+      ? rowItemIds.filter((itemId) => requestedItemSet[itemId])
+      : rowItemIds;
+
+    if (!overlapItemIds.length) {
+      return;
+    }
+
     getDatesFromRow_(row, indexes).forEach((date) => {
       overlapItemIds.forEach((itemId) => {
         addBookedItemLabel_(bookedItemsByDate, date, getItemLabel_(itemId));
@@ -754,6 +840,71 @@ function getBookedItemsByDate_(targetItemIds) {
   });
 
   return bookedItemsByDate;
+}
+
+function getPendingReservationsByDate_(targetItemIds) {
+  const pendingReservationsByDate = {};
+  const sheet = getReservationSheet_({ skipFormat: true });
+
+  if (sheet.getLastRow() < 2) {
+    return pendingReservationsByDate;
+  }
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(canonicalHeader_);
+  const indexes = buildHeaderIndex_(headers);
+  const requestedItemSet = toSet_(targetItemIds || []);
+  const shouldFilterByItem = Object.keys(requestedItemSet).length > 0;
+
+  values.slice(1).forEach((row) => {
+    const status = getCell_(row, indexes, "狀態");
+    const reservationId = getCell_(row, indexes, "預約編號");
+
+    if (reservationId.indexOf("TEST-") === 0 || !isPending_(status)) {
+      return;
+    }
+
+    const rowItemIds = getItemIdsFromRow_(row, indexes);
+    const overlapItemIds = shouldFilterByItem
+      ? rowItemIds.filter((itemId) => requestedItemSet[itemId])
+      : rowItemIds;
+
+    if (!overlapItemIds.length) {
+      return;
+    }
+
+    const entry = {
+      reservationId,
+      createdAt: normalizeDateTimeValue_(row[indexes["建立時間"]]),
+      createdAtLabel: formatPendingCreatedAt_(row[indexes["建立時間"]]),
+      status: status || "待定",
+      items: overlapItemIds.map(getItemLabel_)
+    };
+
+    getDatesFromRow_(row, indexes).forEach((date) => {
+      addPendingReservation_(pendingReservationsByDate, date, entry);
+    });
+  });
+
+  Object.keys(pendingReservationsByDate).forEach((date) => {
+    pendingReservationsByDate[date].sort(comparePendingReservation_);
+  });
+
+  return pendingReservationsByDate;
+}
+
+function addPendingReservation_(pendingReservationsByDate, date, entry) {
+  if (!pendingReservationsByDate[date]) {
+    pendingReservationsByDate[date] = [];
+  }
+
+  if (!pendingReservationsByDate[date].some((reservation) => reservation.reservationId === entry.reservationId)) {
+    pendingReservationsByDate[date].push(entry);
+  }
+}
+
+function comparePendingReservation_(first, second) {
+  return String(first.createdAt || "").localeCompare(String(second.createdAt || ""));
 }
 
 function addBookedItemLabel_(bookedItemsByDate, date, label) {
@@ -768,7 +919,7 @@ function addBookedItemLabel_(bookedItemsByDate, date, label) {
 
 function getBookedDateSet_(targetItemIds) {
   const bookedDates = {};
-  const sheet = getReservationSheet_();
+  const sheet = getReservationSheet_({ skipFormat: true });
 
   if (sheet.getLastRow() < 2) {
     return bookedDates;
@@ -785,6 +936,10 @@ function getBookedDateSet_(targetItemIds) {
     const reservationId = getCell_(row, indexes, "預約編號");
 
     if (reservationId.indexOf("TEST-") === 0 || isCanceled_(status)) {
+      return;
+    }
+
+    if (!isConfirmed_(status)) {
       return;
     }
 
@@ -969,6 +1124,28 @@ function normalizeDateValue_(value) {
   return text_(value).slice(0, 10);
 }
 
+function normalizeDateTimeValue_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
+  }
+
+  return text_(value);
+}
+
+function formatPendingCreatedAt_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "MM/dd HH:mm");
+  }
+
+  const parsedDate = new Date(text_(value));
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return Utilities.formatDate(parsedDate, Session.getScriptTimeZone(), "MM/dd HH:mm");
+  }
+
+  return text_(value);
+}
+
 function isValidDateString_(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value || "");
 }
@@ -1014,6 +1191,14 @@ function getItemLabel_(itemId) {
 
 function isCanceled_(status) {
   return /取消|已取消|cancel/i.test(text_(status));
+}
+
+function isPending_(status) {
+  return /新預約|待確認|待定|pending/i.test(text_(status));
+}
+
+function isConfirmed_(status) {
+  return !isCanceled_(status) && !isPending_(status);
 }
 
 function canonicalHeader_(value) {

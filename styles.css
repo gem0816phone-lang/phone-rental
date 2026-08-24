@@ -753,6 +753,10 @@ textarea:focus {
   color: var(--coral);
 }
 
+.calendar-legend .legend-pending {
+  color: #b7791f;
+}
+
 .status-dot {
   display: inline-block;
   width: 9px;
@@ -767,6 +771,10 @@ textarea:focus {
 
 .status-dot.full {
   background: var(--coral);
+}
+
+.status-dot.pending {
+  background: #f7d77a;
 }
 
 .availability-status {
@@ -844,6 +852,18 @@ textarea:focus {
   outline: 3px solid rgba(216, 91, 72, 0.16);
 }
 
+.calendar-day.is-pending {
+  border-color: #f1cf82;
+  background: #fff8df;
+  color: #5f4517;
+}
+
+.calendar-day.is-pending:not(:disabled):hover,
+.calendar-day.is-pending:not(:disabled):focus {
+  border-color: #c98715;
+  outline: 3px solid rgba(201, 135, 21, 0.14);
+}
+
 .calendar-day.is-past {
   background: #f2f0eb;
   color: #9ba19a;
@@ -884,6 +904,10 @@ textarea:focus {
 
 .date-status.status-full {
   color: var(--coral);
+}
+
+.date-status.status-pending {
+  color: #b7791f;
 }
 
 .date-status.status-past {
@@ -1015,6 +1039,13 @@ textarea:focus {
   gap: 6px;
   margin: 0;
   padding-left: 20px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.pending-list {
+  display: grid;
+  gap: 5px;
   color: var(--ink);
   font-weight: 800;
 }

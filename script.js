@@ -113,6 +113,7 @@ let selectedPackageId = "";
 let selectedAddOnPackageIds = new Set();
 let unavailableDates = new Set(config.unavailableDates || []);
 let unavailableItemsByDate = {};
+let pendingReservationsByDate = {};
 let latestAvailabilityKey = "";
 let availabilityReadyKey = "";
 let availabilitySyncingKey = "";
@@ -663,6 +664,7 @@ function renderCalendar() {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isPast = date < today;
     const isFull = canSelectDates && unavailableDates.has(dateString);
+    const isPending = canSelectDates && !isFull && hasPendingReservations(dateString);
     const isSelected = selectedDates.has(dateString);
     const status = !hasPackage
       ? "先選"
@@ -672,6 +674,8 @@ function renderCalendar() {
           ? "已過"
           : isFull
             ? "已滿"
+            : isPending
+              ? "待定"
             : "可選";
     const statusClass = !hasPackage
       ? "status-past"
@@ -681,6 +685,8 @@ function renderCalendar() {
           ? "status-past"
           : isFull
             ? "status-full"
+            : isPending
+              ? "status-pending"
             : "status-available";
     const classes = ["calendar-day"];
 
@@ -688,6 +694,7 @@ function renderCalendar() {
     if (isPast || !hasPackage) classes.push("is-past");
     if (hasPackage && (!isAvailabilityReady || isAvailabilitySyncing)) classes.push("is-syncing");
     if (isFull) classes.push("is-full");
+    if (isPending) classes.push("is-pending");
     if (isSelected) classes.push("is-selected");
 
     cells.push(`
@@ -696,9 +703,10 @@ function renderCalendar() {
         type="button"
         data-date="${dateString}"
         data-full="${isFull ? "true" : "false"}"
+        data-pending="${isPending ? "true" : "false"}"
         ${!canSelectDates || isPast ? "disabled" : ""}
         aria-pressed="${isSelected ? "true" : "false"}"
-        aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}${isFull ? "，點擊查看已租物品" : ""}"
+        aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}${isFull ? "，點擊查看已租物品" : ""}${isPending ? "，點擊查看排隊順位" : ""}"
       >
         <span class="date-number">${day}</span>
         <span class="date-status ${statusClass}">${status}</span>
@@ -725,6 +733,10 @@ function handleCalendarDayClick(button) {
     return;
   }
 
+  if (button.dataset.pending === "true") {
+    showPendingDateDialog(button.dataset.date);
+  }
+
   toggleDate(button.dataset.date);
 }
 
@@ -747,6 +759,30 @@ function showBookedDateDialog(dateString) {
   bookedDialog.showModal();
 }
 
+function showPendingDateDialog(dateString) {
+  const dateLabel = formatDateLabel(dateString);
+  const reservations = getPendingReservations(dateString);
+  const rank = reservations.length + 1;
+  const lines = reservations.map((reservation, index) => `
+    <p>${index + 1}.${escapeHtml(reservation.createdAtLabel || "稍早")} 有人已先預約 目前待確認</p>
+  `).join("");
+
+  if (!bookedDialog.showModal) {
+    window.alert(`目前您是第${rank}順位 可先排隊預約\n${reservations.map((reservation, index) => `${index + 1}.${reservation.createdAtLabel || "稍早"} 有人已先預約 目前待確認`).join("\n")}\n若未即時聯絡並於12小時內繳交訂金\n檔期將自動釋出給下一順位的客人`);
+    return;
+  }
+
+  bookedDialogTitle.textContent = `${dateLabel} 待定`;
+  bookedDialogBody.innerHTML = `
+    <p><strong>目前您是第${rank}順位 可先排隊預約</strong></p>
+    <div class="pending-list">
+      ${lines || "<p>目前尚無待確認預約。</p>"}
+    </div>
+    <p>若未即時聯絡並於12小時內繳交訂金<br />檔期將自動釋出給下一順位的客人</p>
+  `;
+  bookedDialog.showModal();
+}
+
 function getUnavailableItemLabels(dateString) {
   const labels = unavailableItemsByDate[dateString] || [];
 
@@ -755,6 +791,14 @@ function getUnavailableItemLabels(dateString) {
   }
 
   return ["店家已設定此日期不可租"];
+}
+
+function hasPendingReservations(dateString) {
+  return getPendingReservations(dateString).length > 0;
+}
+
+function getPendingReservations(dateString) {
+  return pendingReservationsByDate[dateString] || [];
 }
 
 function toggleDate(dateString) {
@@ -958,7 +1002,7 @@ async function handleSubmit(event) {
   payload.set("pageUrl", window.location.href);
 
   if (payload.get("companyWebsite")) {
-    completeReservation(reservationId, dates, selectedItemIds);
+    completeReservation(reservationId);
     return;
   }
 
@@ -980,7 +1024,7 @@ async function handleSubmit(event) {
         mode: "no-cors",
         body: payload
       });
-      completeReservation(reservationId, dates, selectedItemIds);
+      completeReservation(reservationId);
     }
   } catch (error) {
     showStatus("error", "送出時遇到問題，請稍後再試，或直接用 thread 聯絡店家。");
@@ -990,15 +1034,7 @@ async function handleSubmit(event) {
   }
 }
 
-function completeReservation(reservationId, dates, itemIds) {
-  (itemIds || []).forEach((itemId) => {
-    if (!localBookedDatesByItem[itemId]) {
-      localBookedDatesByItem[itemId] = new Set();
-    }
-
-    dates.forEach((date) => localBookedDatesByItem[itemId].add(date));
-  });
-
+function completeReservation(reservationId) {
   showSuccessDialog(reservationId);
 }
 
@@ -1026,6 +1062,7 @@ function resetReservationFlow() {
   selectedAddOnPackageIds = new Set();
   unavailableDates = new Set(config.unavailableDates || []);
   unavailableItemsByDate = {};
+  pendingReservationsByDate = {};
   latestAvailabilityKey = "";
   availabilityReadyKey = "";
   availabilitySyncingKey = "";
@@ -1043,6 +1080,7 @@ function loadAvailability() {
     availabilitySyncingKey = "";
     unavailableDates = new Set(config.unavailableDates || []);
     unavailableItemsByDate = {};
+    pendingReservationsByDate = {};
     availabilityStatus.textContent = "請先選擇物品。";
     renderCalendar();
     return;
@@ -1054,6 +1092,7 @@ function loadAvailability() {
   availabilitySyncingKey = requestKey;
   unavailableDates = getLocalUnavailableDates(packageInfo.selectedItemIds);
   unavailableItemsByDate = getLocalUnavailableItemsByDate(packageInfo.selectedItemIds);
+  pendingReservationsByDate = {};
   availabilityStatus.textContent = "正在同步可選日期...";
   renderCalendar();
   updateSelectionSummary();
@@ -1102,6 +1141,7 @@ function loadAvailability() {
         getLocalUnavailableItemsByDate(packageInfo.selectedItemIds),
         payload.unavailableItemsByDate || {}
       );
+      pendingReservationsByDate = payload.pendingReservationsByDate || {};
       availabilitySyncingKey = "";
       availabilityReadyKey = requestKey;
       availabilityStatus.textContent = `同步更新時間 ${formatTime(new Date())}`;
