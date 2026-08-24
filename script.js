@@ -31,6 +31,7 @@ const rentalItems = [
     discountedDaily: 150,
     discountMinDays: 3,
     addOnDaily: 100,
+    minimumRentalDays: 2,
     depositWithId: 1000,
     depositNoId: 10000,
     canCoexist: true
@@ -366,6 +367,7 @@ function getSinglePackageInfo(itemId, options = {}) {
     daily,
     discountedDaily,
     discountMinDays: item.discountMinDays,
+    minimumRentalDays: asAddOnOffer ? 1 : item.minimumRentalDays || 1,
     depositWithId: item.depositWithId,
     depositNoId: item.depositNoId
   };
@@ -1051,6 +1053,13 @@ function showDetailsStep() {
     return;
   }
 
+  const minimumRentalViolation = getMinimumRentalViolation(packageInfo, getSelectedDateList());
+
+  if (minimumRentalViolation) {
+    showMinimumRentalDialog(minimumRentalViolation);
+    return;
+  }
+
   if (!isAvailabilityReadyForPackage(packageInfo)) {
     showDateStep();
     showStatus("warning", "請等待可租狀態同步完成後再填寫資料。");
@@ -1090,6 +1099,14 @@ async function handleSubmit(event) {
   if (!dates.length) {
     showDateStep();
     showStatus("error", "請先在日曆上選擇要租的日期。");
+    return;
+  }
+
+  const minimumRentalViolation = getMinimumRentalViolation(packageInfo, dates);
+
+  if (minimumRentalViolation) {
+    showDateStep();
+    showMinimumRentalDialog(minimumRentalViolation);
     return;
   }
 
@@ -1521,6 +1538,42 @@ function combinePackageInfo(packages) {
     depositWithId: sumPackageField(packages, "depositWithId"),
     depositNoId: sumPackageField(packages, "depositNoId")
   };
+}
+
+function getMinimumRentalViolation(packageInfo, dates) {
+  const packages = packageInfo.packages || [packageInfo];
+  const blockedPackage = packages.find((selectedPackage) => (
+    !selectedPackage.isAddOnOffer &&
+    selectedPackage.minimumRentalDays > 1 &&
+    dates.length < selectedPackage.minimumRentalDays
+  ));
+
+  if (!blockedPackage) {
+    return null;
+  }
+
+  const itemNames = blockedPackage.components.map((item) => item.name).join(" + ");
+
+  return {
+    title: `[${blockedPackage.typeLabel}] ${itemNames}`,
+    message: `此物品單租至少需租借 ${blockedPackage.minimumRentalDays} 天`
+  };
+}
+
+function showMinimumRentalDialog(violation) {
+  const message = `${violation.title}\n${violation.message}`;
+
+  if (!bookedDialog.showModal) {
+    window.alert(message);
+    return;
+  }
+
+  bookedDialogTitle.textContent = "租借天數不足";
+  bookedDialogBody.innerHTML = `
+    <p><strong>${escapeHtml(violation.title)}</strong></p>
+    <p>${escapeHtml(violation.message)}</p>
+  `;
+  bookedDialog.showModal();
 }
 
 function sumPackageField(packages, fieldName) {
