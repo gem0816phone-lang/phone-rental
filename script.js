@@ -599,7 +599,6 @@ function handleItemSelectionChange(event) {
   renderDepositOptions();
   renderCalendar();
   updateSelectionSummary();
-  loadAvailability();
 }
 
 function updateItemSelection() {
