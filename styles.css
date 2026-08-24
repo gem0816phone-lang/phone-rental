@@ -108,33 +108,34 @@ a {
 
 .brand-heart {
   position: relative;
-  width: 20px;
-  height: 20px;
+  display: grid;
+  width: 26px;
+  height: 24px;
+  place-items: center;
   flex: 0 0 auto;
-  background: linear-gradient(135deg, #c4b5fd, #7c3aed);
-  border-radius: 5px;
-  box-shadow: 0 4px 0 rgba(76, 29, 149, 0.2);
-  transform: rotate(-45deg);
-}
-
-.brand-heart::before,
-.brand-heart::after {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: inherit;
+  filter: drop-shadow(0 3px 0 rgba(76, 29, 149, 0.24));
 }
 
 .brand-heart::before {
-  top: -10px;
-  left: 0;
+  content: "♥";
+  background: linear-gradient(180deg, #c4b5fd 0 31%, #8b5cf6 32% 62%, #6d28d9 63% 100%);
+  background-clip: text;
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 31px;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .brand-heart::after {
-  top: 0;
-  left: 10px;
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .hero {
@@ -1363,12 +1364,6 @@ textarea:focus {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 14px 32px rgba(29, 38, 40, 0.08);
-}
-
-.showcase-video-card h3 {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.35;
 }
 
 .showcase-video {

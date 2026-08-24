@@ -256,7 +256,6 @@ function renderShowcase() {
       >
         <source src="${escapeHtml(video.src)}" type="video/mp4" />
       </video>
-      <h3>${escapeHtml(video.title)}</h3>
     </article>
   `).join("");
 }
