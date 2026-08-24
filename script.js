@@ -70,6 +70,7 @@ const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month
 const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
+const availabilityFetchTimeoutMs = 12000;
 
 const form = document.querySelector("#reservationForm");
 const bookingTitle = document.querySelector("#booking-title");
@@ -117,6 +118,8 @@ let pendingReservationsByDate = {};
 let latestAvailabilityKey = "";
 let availabilityReadyKey = "";
 let availabilitySyncingKey = "";
+let availabilityRequestId = 0;
+let availabilityAbortController = null;
 
 init();
 
@@ -590,12 +593,12 @@ function handleItemSelectionChange(event) {
   }
 
   selectedDates = new Set();
+  clearAvailabilityState();
   clearStatus();
   updateItemSelection();
   renderDepositOptions();
   renderCalendar();
   updateSelectionSummary();
-  loadAvailability();
 }
 
 function updateItemSelection() {
@@ -1060,12 +1063,7 @@ function resetReservationFlow() {
   selectedDates = new Set();
   selectedPackageId = "";
   selectedAddOnPackageIds = new Set();
-  unavailableDates = new Set(config.unavailableDates || []);
-  unavailableItemsByDate = {};
-  pendingReservationsByDate = {};
-  latestAvailabilityKey = "";
-  availabilityReadyKey = "";
-  availabilitySyncingKey = "";
+  clearAvailabilityState();
   renderDepositOptions();
   showItemStep();
   renderCalendar();
@@ -1074,8 +1072,16 @@ function resetReservationFlow() {
 
 function loadAvailability() {
   const packageInfo = getPackageInfo();
+  const requestId = availabilityRequestId + 1;
+  availabilityRequestId = requestId;
+
+  if (availabilityAbortController) {
+    availabilityAbortController.abort();
+    availabilityAbortController = null;
+  }
 
   if (!packageInfo) {
+    latestAvailabilityKey = "";
     availabilityReadyKey = "";
     availabilitySyncingKey = "";
     unavailableDates = new Set(config.unavailableDates || []);
@@ -1113,9 +1119,16 @@ function loadAvailability() {
   requestUrl.searchParams.set("selectedItems", packageInfo.selectedItemIds.join(","));
   requestUrl.searchParams.set("cachebust", String(Date.now()));
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, availabilityFetchTimeoutMs);
+  availabilityAbortController = controller;
+
   fetch(requestUrl.toString(), {
     method: "GET",
-    cache: "no-store"
+    cache: "no-store",
+    signal: controller.signal
   })
     .then((response) => {
       if (!response.ok) {
@@ -1125,7 +1138,7 @@ function loadAvailability() {
       return response.json();
     })
     .then((payload) => {
-      if (requestKey !== latestAvailabilityKey) {
+      if (requestId !== availabilityRequestId || requestKey !== latestAvailabilityKey) {
         return;
       }
 
@@ -1148,16 +1161,41 @@ function loadAvailability() {
       renderCalendar();
       updateSelectionSummary();
     })
-    .catch(() => {
-      if (requestKey === latestAvailabilityKey) {
+    .catch((error) => {
+      if (requestId === availabilityRequestId && requestKey === latestAvailabilityKey) {
         availabilitySyncingKey = "";
         availabilityReadyKey = "";
         selectedDates = new Set();
-        availabilityStatus.textContent = "目前無法同步可租狀態，請稍後再試。";
+        availabilityStatus.textContent = error.name === "AbortError"
+          ? "同步逾時，請點 2 選日期重新同步。"
+          : "目前無法同步可租狀態，請稍後再試。";
         renderCalendar();
         updateSelectionSummary();
       }
+    })
+    .finally(() => {
+      window.clearTimeout(timeoutId);
+
+      if (requestId === availabilityRequestId) {
+        availabilityAbortController = null;
+      }
     });
+}
+
+function clearAvailabilityState() {
+  availabilityRequestId += 1;
+
+  if (availabilityAbortController) {
+    availabilityAbortController.abort();
+    availabilityAbortController = null;
+  }
+
+  latestAvailabilityKey = "";
+  availabilityReadyKey = "";
+  availabilitySyncingKey = "";
+  unavailableDates = new Set(config.unavailableDates || []);
+  unavailableItemsByDate = {};
+  pendingReservationsByDate = {};
 }
 
 function renderDepositOptions() {
