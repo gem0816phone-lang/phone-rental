@@ -151,6 +151,11 @@ const formStatus = document.querySelector("#formStatus");
 const submitButton = document.querySelector("#submitButton");
 const showcaseTabs = document.querySelector("#showcaseTabs");
 const showcaseGrid = document.querySelector("#showcaseGrid");
+const pageSections = {
+  booking: document.querySelector("#booking"),
+  showcase: document.querySelector("#showcase")
+};
+const pageLinks = document.querySelectorAll("[data-page-link]");
 
 const today = startOfDay(new Date());
 const localBookedDatesByItem = {};
@@ -180,6 +185,7 @@ function init() {
   showItemStep();
   renderCalendar();
   updateSelectionSummary();
+  syncPageFromHash(false);
 }
 
 function bindEvents() {
@@ -227,6 +233,47 @@ function bindEvents() {
     activeShowcaseCategoryId = tab.dataset.showcaseId;
     renderShowcase();
   });
+  pageLinks.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const page = link.dataset.pageLink;
+
+      if (!pageSections[page]) {
+        return;
+      }
+
+      history.pushState(null, "", `#${page}`);
+      showPage(page, true);
+    });
+  });
+  window.addEventListener("hashchange", () => syncPageFromHash(true));
+  window.addEventListener("popstate", () => syncPageFromHash(true));
+}
+
+function syncPageFromHash(shouldScroll) {
+  const page = window.location.hash === "#showcase" ? "showcase" : "booking";
+  showPage(page, shouldScroll);
+}
+
+function showPage(page, shouldScroll) {
+  Object.entries(pageSections).forEach(([pageName, section]) => {
+    section.hidden = pageName !== page;
+  });
+
+  pageLinks.forEach((link) => {
+    const isActive = link.dataset.pageLink === page;
+    link.classList.toggle("is-active", isActive);
+
+    if (isActive) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  });
+
+  if (shouldScroll) {
+    scrollToPageTop();
+  }
 }
 
 function renderShowcase() {

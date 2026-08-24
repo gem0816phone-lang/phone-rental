@@ -106,36 +106,29 @@ a {
   clip-path: polygon(20% 0, 80% 0, 100% 34%, 50% 100%, 0 34%);
 }
 
-.brand-heart {
-  position: relative;
-  display: grid;
-  width: 26px;
-  height: 24px;
-  place-items: center;
-  flex: 0 0 auto;
-  filter: drop-shadow(0 3px 0 rgba(76, 29, 149, 0.24));
+.brand-gem.is-blue {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0 18%, transparent 19%),
+    linear-gradient(55deg, transparent 33%, rgba(30, 64, 175, 0.38) 34% 37%, transparent 38%),
+    linear-gradient(125deg, transparent 33%, rgba(30, 64, 175, 0.42) 34% 37%, transparent 38%),
+    linear-gradient(180deg, #bfdbfe 0 31%, #3b82f6 32% 62%, #1d4ed8 63% 100%);
+  filter: drop-shadow(0 3px 0 rgba(30, 64, 175, 0.24));
 }
 
-.brand-heart::before {
-  content: "♥";
-  background: linear-gradient(180deg, #c4b5fd 0 31%, #8b5cf6 32% 62%, #6d28d9 63% 100%);
-  background-clip: text;
-  color: transparent;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 31px;
-  line-height: 1;
-  transform: translateY(-1px);
+.brand-gem.is-blue::before {
+  border-right-color: rgba(255, 255, 255, 0.58);
+  border-left-color: rgba(30, 64, 175, 0.34);
 }
 
-.brand-heart::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.42);
+.brand-gem.is-blue::after {
+  background:
+    linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.45) 49% 51%, transparent 52%),
+    linear-gradient(35deg, transparent 49%, rgba(30, 64, 175, 0.34) 50% 52%, transparent 53%),
+    linear-gradient(145deg, transparent 49%, rgba(30, 64, 175, 0.28) 50% 52%, transparent 53%);
+}
+
+.brand.is-active {
+  color: var(--teal-dark);
 }
 
 .hero {
@@ -1295,7 +1288,7 @@ textarea:focus {
 }
 
 .showcase {
-  padding: 0 clamp(12px, 4vw, 32px) clamp(48px, 7vw, 76px);
+  padding: clamp(18px, 5vw, 48px) clamp(12px, 4vw, 32px) clamp(48px, 7vw, 76px);
 }
 
 .showcase-inner {
