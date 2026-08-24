@@ -72,6 +72,7 @@ const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
 const availabilityFetchTimeoutMs = 20000;
+const showcaseAssetVersion = "showcase-20260825-72";
 const showcaseCategories = [
   {
     id: "vivo-x300-ultra",
@@ -337,10 +338,10 @@ function renderShowcase() {
         controls
         playsinline
         preload="metadata"
-        poster="${escapeHtml(video.poster)}"
+        poster="${escapeHtml(getShowcaseMediaUrl(video.poster))}"
         style="--video-ratio: ${escapeHtml(video.ratio)}"
       >
-        <source src="${escapeHtml(video.src)}" type="video/mp4" />
+        <source src="${escapeHtml(getShowcaseMediaUrl(video.src))}" type="video/mp4" />
       </video>
       ${video.seatMap ? `
         <button class="showcase-seat-map-button" type="button" data-seat-map-index="${index}">座位圖</button>
@@ -363,15 +364,19 @@ function showSeatMapDialog(videoIndex) {
   }
 
   if (!seatMapDialog.showModal) {
-    window.open(seatMap.src, "_blank", "noopener");
+    window.open(getShowcaseMediaUrl(seatMap.src), "_blank", "noopener");
     return;
   }
 
   seatMapDialogBody.innerHTML = `
-    <img class="seat-map-image" src="${escapeHtml(seatMap.src)}" alt="${escapeHtml(seatMap.alt)}" />
+    <img class="seat-map-image" src="${escapeHtml(getShowcaseMediaUrl(seatMap.src))}" alt="${escapeHtml(seatMap.alt)}" />
     <p>${caption}</p>
   `;
   seatMapDialog.showModal();
+}
+
+function getShowcaseMediaUrl(path) {
+  return `${path}?v=${showcaseAssetVersion}`;
 }
 
 function renderItemOptions() {
