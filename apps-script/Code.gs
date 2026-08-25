@@ -141,7 +141,8 @@ const CONTRACT_MANAGER_ACTIONS = {
   7: "prepare",
   8: "generate",
   9: "confirm",
-  10: "cancel"
+  10: "cancel",
+  11: "repairSignatureLinks"
 };
 
 function onOpen() {
@@ -225,6 +226,10 @@ function onContractManagerEdit_(e) {
       message = updateReservationStatusFromManager_("已取消");
     }
 
+    if (action === "repairSignatureLinks") {
+      message = repairContractSignatureLinks_();
+    }
+
     writeContractManagerStatus_(message);
   } catch (error) {
     range.setValue(false);
@@ -241,6 +246,7 @@ function addPhoneRentalMenu_() {
     .addSeparator()
     .addItem("建立/更新合約明細", "prepareContractDetail")
     .addItem("產生合約書", "generateContractFromSelectedRow")
+    .addItem("修復簽名連結", "repairContractSignatureLinks")
     .addSeparator()
     .addItem("標記已確認", "markSelectedReservationConfirmed")
     .addItem("標記已取消", "markSelectedReservationCanceled")
@@ -1107,7 +1113,7 @@ function setupContractManager() {
   getContractSheet_();
   getContractFolder_();
   const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
-  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B10 執行。`);
+  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B11 執行。`);
 }
 
 function authorizePhoneRentalPermissions() {
@@ -1136,6 +1142,17 @@ function generateContractFromManager() {
   try {
     const message = generateContractFromManager_();
     showAlert_(message);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function repairContractSignatureLinks() {
+  try {
+    const message = repairContractSignatureLinks_();
+    showAlert_(message);
+    return message;
   } catch (error) {
     showAlert_(error.message);
     throw error;
@@ -1177,6 +1194,8 @@ function handleContractManagerWebAction_(params) {
       message = updateReservationStatusFromManager_("已確認");
     } else if (managerAction === "cancel") {
       message = updateReservationStatusFromManager_("已取消");
+    } else if (managerAction === "repairSignatureLinks") {
+      message = repairContractSignatureLinks_();
     } else {
       throw new Error("未知的合約操作。");
     }
@@ -1343,6 +1362,40 @@ function generateContractFromManager_() {
   return `合約書已產生：${manager.reservationId}。PDF 與簽名連結已寫入「合約明細」。\n簽名連結：${signatureUrl}`;
 }
 
+function repairContractSignatureLinks_() {
+  const sheet = getContractSheet_();
+  const headers = ensureContractHeaders_(sheet);
+  const reservationIdColumn = getHeaderColumn_(headers, "預約編號");
+
+  if (!reservationIdColumn) {
+    throw new Error("找不到「預約編號」欄位，請先重新整理合約明細。");
+  }
+
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return "合約明細目前沒有資料列可修復。";
+  }
+
+  let repairedCount = 0;
+
+  for (let row = 2; row <= lastRow; row += 1) {
+    const reservationId = text_(sheet.getRange(row, reservationIdColumn).getDisplayValue());
+
+    if (!reservationId) {
+      continue;
+    }
+
+    const signatureToken = getOrCreateSignatureToken_(sheet, headers, row);
+    const signatureUrl = buildSignatureUrl_(reservationId, signatureToken);
+    writeSignatureLink_(sheet, headers, row, signatureUrl);
+    repairedCount += 1;
+  }
+
+  formatContractSheet_(sheet, headers);
+  return `已修復 ${repairedCount} 筆簽名連結。`;
+}
+
 function updateReservationStatusFromManager_(status) {
   const manager = getContractManagerData_();
   const context = getReservationContextById_(manager.reservationId);
@@ -1494,7 +1547,7 @@ function getContractManagerSheet_() {
 }
 
 function formatContractManagerSheet_(sheet) {
-  ensureSheetSize_(sheet, 11, 3);
+  ensureSheetSize_(sheet, 12, 3);
 
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
@@ -1526,24 +1579,25 @@ function formatContractManagerSheet_(sheet) {
     ["產生合約書", "", "確認「合約明細」後再點，會建立 Google 文件與 PDF"],
     ["標記已確認", "", "收到訂金、確定出租後再點，日期才會正式鎖住"],
     ["標記已取消", "", "取消預約時使用"],
+    ["修復簽名連結", "", "把「合約明細」舊資料列的簽名連結重寫成正確連結"],
   ];
 
   sheet.getRange(2, 1, rows.length, 3).setValues(rows);
-  sheet.getRange("A2:A11")
+  sheet.getRange("A2:A12")
     .setBackground("#f5f3ff")
     .setFontWeight("bold");
-  sheet.getRange("C2:C11")
+  sheet.getRange("C2:C12")
     .setFontColor("#64748b")
     .setFontSize(10);
-  sheet.getRange("A1:C11")
+  sheet.getRange("A1:C12")
     .setVerticalAlignment("middle")
     .setWrap(true);
-  sheet.getRange("B7:B10").clearDataValidations();
-  sheet.getRange("B7:B10")
+  sheet.getRange("B7:B11").clearDataValidations();
+  sheet.getRange("B7:B11")
     .clearContent()
     .insertCheckboxes()
     .setValue(false);
-  sheet.getRange("B7:B10")
+  sheet.getRange("B7:B11")
     .setBackground("#eff6ff")
     .setFontColor("#1d4ed8")
     .setFontWeight("bold")
@@ -2226,13 +2280,14 @@ function writeSignatureLink_(sheet, headers, row, signatureUrl) {
     return;
   }
 
-  const richText = SpreadsheetApp.newRichTextValue()
-    .setText("點我簽名")
-    .setLinkUrl(signatureUrl)
-    .build();
+  const formula = `=HYPERLINK("${escapeSheetFormulaString_(signatureUrl)}","點我簽名")`;
   sheet.getRange(row, column)
-    .setRichTextValue(richText)
+    .setFormula(formula)
     .setNote(signatureUrl);
+}
+
+function escapeSheetFormulaString_(value) {
+  return text_(value).replace(/"/g, '""');
 }
 
 function writeSignatureResult_(sheet, headers, row, signatureFileUrl, signedAt) {
