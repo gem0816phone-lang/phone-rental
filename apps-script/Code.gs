@@ -1,6 +1,7 @@
 const SHEET_NAME = "預約資料";
 const SPREADSHEET_NAME = "手機租借預約資料";
 const FALLBACK_SPREADSHEET_ID = "1B_5iMvLi1d7rehoQUNY8skj6X4D1ZRhct7v54ejnNvM";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby8Wiakvm3uRG045HPYtyOd-BlqDd5f7X_TFDLpOUIWgJkb9VEdo63yJqN6MHe3Rb3TzQ/exec";
 const ITEM_PHONE = "vivo-x300-ultra";
 const ITEM_LENS = "g2-ultra-400mm";
 const ITEM_RAYBAN = "ray-ban-meta";
@@ -22,6 +23,7 @@ const CONTRACT_FOLDER_NAME = "手機租借合約書";
 const CONTRACT_FOLDER_ID_PROPERTY = "CONTRACT_FOLDER_ID";
 const CONTRACT_LESSOR_NAME_PROPERTY = "CONTRACT_LESSOR_NAME";
 const CONTRACT_LESSOR_PHONE_PROPERTY = "CONTRACT_LESSOR_PHONE";
+const CONTRACT_MANAGER_ACTION_KEY_PROPERTY = "CONTRACT_MANAGER_ACTION_KEY";
 const TELEGRAM_ITEM_CONFIGS = {
   [ITEM_PHONE]: {
     title: "[單租] vivo X300 Ultra",
@@ -226,6 +228,10 @@ function addPhoneRentalMenu_() {
 
 function doGet(e) {
   const params = (e && e.parameter) || {};
+
+  if (params.action === "contractManager") {
+    return handleContractManagerWebAction_(params);
+  }
 
   if (params.action === "availability") {
     const requestedItemIds = getRequestedItemIds_(params);
@@ -1102,6 +1108,34 @@ function markManagerReservationCanceled() {
   }
 }
 
+function handleContractManagerWebAction_(params) {
+  try {
+    validateContractManagerActionKey_(params.key);
+
+    const managerAction = text_(params.managerAction);
+    let message = "";
+
+    if (managerAction === "prepare") {
+      message = prepareContractDetailFromManager_();
+    } else if (managerAction === "generate") {
+      message = generateContractFromManager_();
+    } else if (managerAction === "confirm") {
+      message = updateReservationStatusFromManager_("已確認");
+    } else if (managerAction === "cancel") {
+      message = updateReservationStatusFromManager_("已取消");
+    } else {
+      throw new Error("未知的合約操作。");
+    }
+
+    writeContractManagerStatus_(message);
+    return html_("合約操作完成", message);
+  } catch (error) {
+    const message = `錯誤：${error.message}`;
+    writeContractManagerStatus_(message);
+    return html_("合約操作失敗", message);
+  }
+}
+
 function updateSelectedReservationStatus_(status) {
   try {
     const context = getSelectedReservationContextFromAnySheet_();
@@ -1311,11 +1345,12 @@ function formatContractManagerSheet_(sheet) {
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
     : ["", "", "", ""];
+  const managerActionKey = getContractManagerActionKey_();
 
   sheet.clear();
   sheet.setFrozenRows(1);
   sheet.setColumnWidth(1, 180);
-  sheet.setColumnWidth(2, 360);
+  sheet.setColumnWidth(2, 220);
   sheet.setColumnWidth(3, 420);
 
   sheet.getRange("A1:C1").merge()
@@ -1331,10 +1366,10 @@ function formatContractManagerSheet_(sheet) {
     ["出租人電話", existingValues[2], "可先留空；建立合約明細後也能再補"],
     ["執行結果", existingValues[3], "這裡會顯示最後一次操作結果"],
     ["", "", ""],
-    ["建立/更新合約明細", false, "先把預約資料帶到「合約明細」給你確認"],
-    ["產生合約書", false, "確認「合約明細」後再勾選，會建立 Google 文件與 PDF"],
-    ["標記已確認", false, "收到訂金、確定出租後再勾選，日期才會正式鎖住"],
-    ["標記已取消", false, "取消預約時使用"],
+    ["建立/更新合約明細", "", "先把預約資料帶到「合約明細」給你確認"],
+    ["產生合約書", "", "確認「合約明細」後再點，會建立 Google 文件與 PDF"],
+    ["標記已確認", "", "收到訂金、確定出租後再點，日期才會正式鎖住"],
+    ["標記已取消", "", "取消預約時使用"],
   ];
 
   sheet.getRange(2, 1, rows.length, 3).setValues(rows);
@@ -1347,9 +1382,22 @@ function formatContractManagerSheet_(sheet) {
   sheet.getRange("A1:C11")
     .setVerticalAlignment("middle")
     .setWrap(true);
-  sheet.getRange("B7:B10").insertCheckboxes();
+  sheet.getRange("B7").setFormula(makeContractManagerActionFormula_("prepare", "點我建立明細", managerActionKey));
+  sheet.getRange("B8").setFormula(makeContractManagerActionFormula_("generate", "點我產生合約", managerActionKey));
+  sheet.getRange("B9").setFormula(makeContractManagerActionFormula_("confirm", "點我標記已確認", managerActionKey));
+  sheet.getRange("B10").setFormula(makeContractManagerActionFormula_("cancel", "點我標記已取消", managerActionKey));
+  sheet.getRange("B7:B10")
+    .setBackground("#eff6ff")
+    .setFontColor("#1d4ed8")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center");
   sheet.getRange("B2:B5").setBackground("#ffffff");
   sheet.getRange("B5").setBackground("#ecfeff").setWrap(true);
+}
+
+function makeContractManagerActionFormula_(action, label, key) {
+  const url = `${WEB_APP_URL}?action=contractManager&managerAction=${encodeURIComponent(action)}&key=${encodeURIComponent(key)}`;
+  return `=HYPERLINK("${url}","${label}")`;
 }
 
 function getContractManagerData_() {
@@ -1371,6 +1419,24 @@ function getContractManagerData_() {
 function writeContractManagerStatus_(message) {
   const sheet = getContractManagerSheet_();
   sheet.getRange("B5").setValue(`${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MM/dd HH:mm")} ${message}`);
+}
+
+function getContractManagerActionKey_() {
+  const properties = PropertiesService.getScriptProperties();
+  let key = properties.getProperty(CONTRACT_MANAGER_ACTION_KEY_PROPERTY);
+
+  if (!key) {
+    key = Utilities.getUuid().replace(/-/g, "");
+    properties.setProperty(CONTRACT_MANAGER_ACTION_KEY_PROPERTY, key);
+  }
+
+  return key;
+}
+
+function validateContractManagerActionKey_(key) {
+  if (text_(key) !== getContractManagerActionKey_()) {
+    throw new Error("合約操作金鑰不正確，請重新執行 setupContractManager 更新操作連結。");
+  }
 }
 
 function ensureContractHeaders_(sheet) {
@@ -2426,4 +2492,69 @@ function json_(payload) {
 
 function javascript_(source) {
   return ContentService.createTextOutput(source).setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+function html_(title, message) {
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${FALLBACK_SPREADSHEET_ID}/edit`;
+  const safeTitle = escapeHtml_(title);
+  const safeMessage = escapeHtml_(message);
+  return HtmlService.createHtmlOutput(`
+    <!doctype html>
+    <html>
+      <head>
+        <base target="_top">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #f8fafc;
+            color: #0f172a;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          }
+          main {
+            width: min(520px, calc(100vw - 32px));
+            padding: 28px;
+            border: 1px solid #dbe3ee;
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+          }
+          h1 {
+            margin: 0 0 14px;
+            font-size: 22px;
+          }
+          p {
+            white-space: pre-line;
+            line-height: 1.65;
+          }
+          a {
+            display: inline-block;
+            margin-top: 14px;
+            color: #1d4ed8;
+            font-weight: 700;
+          }
+        </style>
+      </head>
+      <body>
+        <main>
+          <h1>${safeTitle}</h1>
+          <p>${safeMessage}</p>
+          <a href="${sheetUrl}">回到手機租借預約資料</a>
+        </main>
+      </body>
+    </html>
+  `);
+}
+
+function escapeHtml_(value) {
+  return plainText_(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
