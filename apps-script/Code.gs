@@ -2255,7 +2255,7 @@ function appendContractDepositSection_(body, rowData) {
     appendContractBullets_(body, [
       "證件正本將於取機時收取，會在現場裝入破壞袋並請您簽名，保證租用期間未擅自拆封使用於其他用途。",
       "還機時確認設備無異常後，現場退還押金及證件。",
-      "若設備損壞且金額不足以賠償，將扣押證件，並採取法律行動。"
+      "若設備損壞且金額不足以賠償，且雙方協調未達成共識，將採取法律行動，產生的費用由承租方承擔。"
     ]);
     return;
   }
@@ -2263,7 +2263,7 @@ function appendContractDepositSection_(body, rowData) {
   appendContractSection_(body, "八、押金須知");
   appendContractBullets_(body, [
     "還機時確認設備無異常後，現場退還押金。",
-    "若設備損壞且金額不足以賠償，將扣押證件，並採取法律行動。"
+    "若設備損壞且金額不足以賠償，且雙方協調未達成共識，將採取法律行動，產生的費用由承租方承擔。"
   ]);
 }
 
