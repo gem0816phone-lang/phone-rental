@@ -24,6 +24,18 @@ const CONTRACT_FOLDER_ID_PROPERTY = "CONTRACT_FOLDER_ID";
 const CONTRACT_LESSOR_NAME_PROPERTY = "CONTRACT_LESSOR_NAME";
 const CONTRACT_LESSOR_PHONE_PROPERTY = "CONTRACT_LESSOR_PHONE";
 const CONTRACT_MANAGER_ACTION_KEY_PROPERTY = "CONTRACT_MANAGER_ACTION_KEY";
+const CONTRACT_PAGE_WIDTH = 595.28;
+const CONTRACT_PAGE_HEIGHT = 841.89;
+const CONTRACT_TABLE_WIDTH = 520;
+const CONTRACT_LABEL_COLUMN_WIDTH = 170;
+const CONTRACT_VALUE_COLUMN_WIDTH = CONTRACT_TABLE_WIDTH - CONTRACT_LABEL_COLUMN_WIDTH;
+const CONTRACT_ITEM_NUMBER_WIDTH = 38;
+const CONTRACT_ITEM_TEXT_WIDTH = (CONTRACT_TABLE_WIDTH - CONTRACT_ITEM_NUMBER_WIDTH * 2) / 2;
+const CONTRACT_INFO_LABEL_WIDTH = 92;
+const CONTRACT_INFO_VALUE_WIDTH = 168;
+const CONTRACT_BODY_FONT_SIZE = 8;
+const CONTRACT_TABLE_FONT_SIZE = 8;
+const CONTRACT_SECTION_FONT_SIZE = 10;
 const TELEGRAM_ITEM_CONFIGS = {
   [ITEM_PHONE]: {
     title: "[單租] vivo X300 Ultra",
@@ -1762,11 +1774,7 @@ function createContractFiles_(rowData) {
   const documentId = document.getId();
   const body = document.getBody();
 
-  body.setAttributes({
-    [DocumentApp.Attribute.FONT_FAMILY]: "Microsoft JhengHei",
-    [DocumentApp.Attribute.FONT_SIZE]: 10.5,
-    [DocumentApp.Attribute.FOREGROUND_COLOR]: "#1f2937"
-  });
+  configureContractBody_(body);
 
   appendContractTitle_(body);
   appendContractSection_(body, "一、基本資料");
@@ -1776,7 +1784,7 @@ function createContractFiles_(rowData) {
   appendContractSection_(body, "三、費用清單");
   appendContractFeeTable_(body, rowData);
   appendContractSection_(body, "四、訂金須知");
-  body.appendParagraph("若取消預約，訂金不退還，並保留下次租借使用。");
+  appendContractBullets_(body, ["若取消預約，訂金不退還，並保留下次租借使用。"]);
   appendContractSection_(body, "五、使用規範");
   appendContractBullets_(body, [
     "請愛護設備，禁止改機、禁止拆機、禁止刷機。",
@@ -1800,10 +1808,10 @@ function createContractFiles_(rowData) {
     "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
   ]);
   appendContractSection_(body, "八、押金返還");
-  body.appendParagraph("還機時確認設備無異常後，現場退還押金。");
+  appendContractBullets_(body, ["還機時確認設備無異常後，現場退還押金。"]);
   appendContractSection_(body, "九、簽名確認");
-  body.appendParagraph("承租人確認已閱讀、理解並同意本合約全部內容，且同意依本合約約定租借、使用及歸還設備。");
   appendContractSignatureTable_(body, rowData);
+  appendCompactParagraph_(body, "承租人確認已閱讀、理解並同意本合約全部內容，且同意依本合約約定租借、使用及歸還設備。", CONTRACT_BODY_FONT_SIZE, 4, 0);
 
   document.saveAndClose();
 
@@ -1818,21 +1826,38 @@ function createContractFiles_(rowData) {
   };
 }
 
+function configureContractBody_(body) {
+  body.setPageWidth(CONTRACT_PAGE_WIDTH);
+  body.setPageHeight(CONTRACT_PAGE_HEIGHT);
+  body.setMarginTop(24);
+  body.setMarginBottom(24);
+  body.setMarginLeft(36);
+  body.setMarginRight(36);
+  body.setAttributes({
+    [DocumentApp.Attribute.FONT_FAMILY]: "Microsoft JhengHei",
+    [DocumentApp.Attribute.FONT_SIZE]: CONTRACT_BODY_FONT_SIZE,
+    [DocumentApp.Attribute.FOREGROUND_COLOR]: "#1f2937"
+  });
+}
+
 function appendContractTitle_(body) {
   const title = body.appendParagraph("設備租借合約書");
   title.setHeading(DocumentApp.ParagraphHeading.TITLE)
     .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-  title.editAsText().setForegroundColor("#111827").setFontSize(20).setBold(true);
+  title.setSpacingBefore(0).setSpacingAfter(0).setLineSpacing(1);
+  title.editAsText().setForegroundColor("#111827").setFontSize(16).setBold(true);
 
   const subtitle = body.appendParagraph("@gem0816phone 設備出租");
   subtitle.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-  subtitle.editAsText().setForegroundColor("#5a6778").setFontSize(10);
+  subtitle.setSpacingBefore(0).setSpacingAfter(4).setLineSpacing(1);
+  subtitle.editAsText().setForegroundColor("#5a6778").setFontSize(8);
 }
 
 function appendContractSection_(body, title) {
   const paragraph = body.appendParagraph(title)
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  paragraph.editAsText().setForegroundColor("#1f4d78").setFontSize(13).setBold(true);
+  paragraph.setSpacingBefore(5).setSpacingAfter(2).setLineSpacing(1);
+  paragraph.editAsText().setForegroundColor("#1f4d78").setFontSize(CONTRACT_SECTION_FONT_SIZE).setBold(true);
 }
 
 function appendContractInfoTable_(body, rowData) {
@@ -1842,19 +1867,27 @@ function appendContractInfoTable_(body, rowData) {
     ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`, "", ""],
     ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
   ]);
-  styleContractTable_(table);
+  mergeTableRowCells_(table, 2, 1, 3);
+  styleContractTable_(table, { headerRows: 0, labelColumns: [0, 2] });
+  setContractInfoTableWidths_(table);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
   const equipmentLines = splitLines_(rowData["租借設備清單"]);
-  const rows = [["項次", "設備 / 配件"]];
+  const rows = [["項次", "設備 / 配件", "項次", "設備 / 配件"]];
 
-  equipmentLines.forEach((line, index) => {
-    rows.push([String(index + 1), line]);
-  });
+  for (let index = 0; index < equipmentLines.length; index += 2) {
+    rows.push([
+      String(index + 1),
+      equipmentLines[index],
+      equipmentLines[index + 1] ? String(index + 2) : "",
+      equipmentLines[index + 1] || ""
+    ]);
+  }
 
   const table = body.appendTable(rows);
-  styleContractTable_(table);
+  styleContractTable_(table, { headerRows: 1, labelColumns: [0, 2] });
+  setEquipmentTableWidths_(table);
 }
 
 function appendContractFeeTable_(body, rowData) {
@@ -1866,7 +1899,8 @@ function appendContractFeeTable_(body, rowData) {
     ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
   ];
   const table = body.appendTable(rows);
-  styleContractTable_(table);
+  styleContractTable_(table, { headerRows: 1, labelColumns: [0] });
+  setTwoColumnTableWidths_(table);
 }
 
 function getContractRentAmount_(rowData) {
@@ -1879,28 +1913,90 @@ function appendContractSignatureTable_(body, rowData) {
     ["簽署日期時間", "__________ 年 _____ 月 _____ 日 _____ 點 _____ 分"],
     ["承租人簽名", "\n\n"]
   ]);
-  styleContractTable_(table);
+  styleContractTable_(table, { headerRows: 0, labelColumns: [0] });
+  setTwoColumnTableWidths_(table);
 }
 
 function appendContractBullets_(body, items) {
   items.forEach((item) => {
     const listItem = body.appendListItem(item).setGlyphType(DocumentApp.GlyphType.BULLET);
-    listItem.editAsText().setFontSize(10.5);
+    listItem.setSpacingBefore(0).setSpacingAfter(0).setLineSpacing(1);
+    listItem.editAsText().setFontSize(CONTRACT_BODY_FONT_SIZE);
   });
 }
 
-function styleContractTable_(table) {
+function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAfter) {
+  const paragraph = body.appendParagraph(text);
+  paragraph.setSpacingBefore(spacingBefore).setSpacingAfter(spacingAfter).setLineSpacing(1);
+  paragraph.editAsText().setFontSize(fontSize);
+  return paragraph;
+}
+
+function styleContractTable_(table, options) {
+  const settings = options || {};
+  const headerRows = settings.headerRows || 0;
+  const labelColumns = settings.labelColumns || [];
+
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     const row = table.getRow(rowIndex);
 
     for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
       const cell = row.getCell(cellIndex);
-      cell.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(6).setPaddingRight(6);
+      const isHeader = rowIndex < headerRows;
+      const isLabel = labelColumns.indexOf(cellIndex) !== -1;
 
-      if (rowIndex === 0 || cellIndex % 2 === 0) {
-        cell.setBackgroundColor(rowIndex === 0 ? "#e8eef5" : "#f5f6f8");
+      cell.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
+      cell.editAsText().setFontSize(CONTRACT_TABLE_FONT_SIZE).setForegroundColor("#1f4d78");
+
+      if (isHeader || isLabel) {
+        cell.setBackgroundColor(isHeader ? "#e8eef5" : "#f5f6f8");
         cell.editAsText().setBold(true);
       }
+    }
+  }
+}
+
+function mergeTableRowCells_(table, rowIndex, startCellIndex, endCellIndex) {
+  const row = table.getRow(rowIndex);
+
+  for (let cellIndex = endCellIndex; cellIndex > startCellIndex; cellIndex -= 1) {
+    row.getCell(cellIndex).merge();
+  }
+}
+
+function setContractInfoTableWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    const row = table.getRow(rowIndex);
+
+    if (row.getNumCells() === 2) {
+      setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
+    } else {
+      setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH, CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH]);
+    }
+  }
+}
+
+function setTwoColumnTableWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_LABEL_COLUMN_WIDTH, CONTRACT_VALUE_COLUMN_WIDTH]);
+  }
+}
+
+function setEquipmentTableWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    setTableRowWidths_(table.getRow(rowIndex), [
+      CONTRACT_ITEM_NUMBER_WIDTH,
+      CONTRACT_ITEM_TEXT_WIDTH,
+      CONTRACT_ITEM_NUMBER_WIDTH,
+      CONTRACT_ITEM_TEXT_WIDTH
+    ]);
+  }
+}
+
+function setTableRowWidths_(row, widths) {
+  for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
+    if (widths[cellIndex]) {
+      row.getCell(cellIndex).setWidth(widths[cellIndex]);
     }
   }
 }
