@@ -1902,16 +1902,16 @@ function createContractFiles_(rowData) {
   appendContractFeeTable_(body, rowData);
   appendContractSection_(body, "四、訂金須知");
   appendContractBullets_(body, [
-    "若距離預定時間14天以上取消預約，訂金全額退還。",
-    "若距離預定時間14天之內取消預約，訂金不退還，並保留下次租借使用，如有特殊情況請私訊討論。",
-    "若距離預定時間14天以上，因其他顧客造成設備損壞導致無法租借，將原價退還訂金並取消預約。",
-    "若距離預定時間14天之內，因其他顧客造成設備損壞導致無法租借，將賠償雙倍訂金並取消預約。"
+    "若距離預定時間14天以上，承租人取消預約，訂金全額退還。",
+    "若距離預定時間14天之內，承租人取消預約，訂金不退還，並保留下次租借使用，如有特殊情況請私訊討論。",
+    "若距離預定時間14天以上，出租人取消租借，將原價退還訂金。",
+    "若距離預定時間14天之內，出租人取消租借，將賠償雙倍訂金。"
   ]);
   appendContractSection_(body, "五、使用規範");
   appendContractBullets_(body, [
     "請愛護設備，禁止改機、禁止拆機、禁止刷機，除了相機功能外，請勿擅自更改系統設置。",
     "所有照片影片請自行備份，並刪除後歸還，若有登入任何帳號，歸還前請自行登出。",
-    "歸還時電量請維持在30%以上。"
+    "取機時電量會在80%以上，歸還時麻煩電量也請維持在80%以上。"
   ]);
   appendContractSection_(body, "六、設備損壞及遺失");
   appendContractBullets_(body, [
@@ -1924,7 +1924,7 @@ function createContractFiles_(rowData) {
   appendContractSection_(body, "七、逾期歸還");
   appendContractBullets_(body, [
     "超時每一小時扣除押金100元，若有狀況請提前告知協商。",
-    "若超時造成後續客人無法租借，需賠償後續客人租用的總租金。",
+    "若超時造成當日後續客人預約時間無法準時交機，需額外賠償後續客人的訂金。",
     "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
   ]);
   appendContractDepositSection_(body, rowData);
