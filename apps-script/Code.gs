@@ -1806,9 +1806,8 @@ function createContractFiles_(rowData) {
   ]);
   appendContractSection_(body, "七、逾期歸還");
   appendContractBullets_(body, [
-    "超時每一小時扣除押金100元。",
-    "超時三小時以上視同增加一天租借時間。",
-    "若超時造成後續客人無法租借，需賠償後續客人雙倍承租金額。",
+    "超時每一小時扣除押金100元，若有狀況請提前告知協商。",
+    "若超時造成後續客人無法租借，需賠償後續客人租用的總租金。",
     "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
   ]);
   appendContractSection_(body, "八、押金及證件");
@@ -1864,7 +1863,7 @@ function appendContractTitle_(body) {
 function appendContractSection_(body, title) {
   const paragraph = body.appendParagraph(title)
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  paragraph.setSpacingBefore(5).setSpacingAfter(2).setLineSpacing(1);
+  paragraph.setSpacingBefore(3).setSpacingAfter(1).setLineSpacing(1);
   paragraph.editAsText().setForegroundColor("#1f4d78").setFontSize(CONTRACT_SECTION_FONT_SIZE).setBold(true);
 }
 
@@ -1913,6 +1912,7 @@ function appendContractFeeTable_(body, rowData) {
   const table = body.appendTable(rows);
   styleContractTable_(table, { headerRows: 1, labelColumns: [0] });
   setTwoColumnTableWidths_(table);
+  appendCompactParagraph_(body, "訂金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。", CONTRACT_BODY_FONT_SIZE, 1, 0);
 }
 
 function getContractRentAmount_(rowData) {
