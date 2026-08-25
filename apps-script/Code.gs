@@ -124,6 +124,7 @@ const CONTRACT_HEADERS = [
   "租借設備清單",
   "預估租金",
   "押金",
+  "押金方式",
   "已付訂金",
   "剩餘款項",
   "合約文件",
@@ -1540,6 +1541,7 @@ function formatContractSheet_(sheet, headers) {
     "租借設備清單": 360,
     "預估租金": 95,
     "押金": 95,
+    "押金方式": 170,
     "已付訂金": 95,
     "剩餘款項": 95,
     "合約文件": 260,
@@ -1608,6 +1610,7 @@ function buildContractDetailFromReservation_(reservationData) {
     "預估租金": totalRent || "",
     "總租金": totalRent || "",
     "押金": deposit || "",
+    "押金方式": reservationData["押金方式"],
     "已付訂金": paidDeposit || "",
     "剩餘款項": totalRent || deposit || paidDeposit ? Math.max(totalRent + deposit - paidDeposit, 0) : "",
     "合約文件": "",
@@ -1792,7 +1795,7 @@ function createContractFiles_(rowData) {
   ]);
   appendContractSection_(body, "五、使用規範");
   appendContractBullets_(body, [
-    "請愛護設備，禁止改機、禁止拆機、禁止刷機，除了相機功能外，請勿擅自更改手機設置。",
+    "請愛護設備，禁止改機、禁止拆機、禁止刷機，除了相機功能外，請勿擅自更改系統設置。",
     "所有照片影片請自行備份，並刪除後歸還，若有登入任何帳號，歸還前請自行登出。",
     "歸還時電量請維持在30%以上。"
   ]);
@@ -1810,12 +1813,7 @@ function createContractFiles_(rowData) {
     "若超時造成後續客人無法租借，需賠償後續客人租用的總租金。",
     "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
   ]);
-  appendContractSection_(body, "八、押金及證件");
-  appendContractBullets_(body, [
-    "證件正本將於取機時收取，會在現場裝入破壞袋並請您簽名，保證不做其他用途。",
-    "還機時確認設備無異常後，現場退還押金及證件。",
-    "若設備損壞且金額不足以賠償，將扣押證件，並採取法律行動。"
-  ]);
+  appendContractDepositSection_(body, rowData);
   appendContractSection_(body, "九、簽名確認");
   appendContractSignatureTable_(body, rowData);
   appendContractFinalConfirmation_(body);
@@ -1905,7 +1903,7 @@ function appendContractFeeTable_(body, rowData) {
   const rows = [
     ["項目", "金額"],
     ["總租金", `NT. ${formatContractAmount_(getContractRentAmount_(rowData))} 元`],
-    ["押金", `NT. ${formatContractAmount_(rowData["押金"])} 元`],
+    ["押金", getContractDepositDisplay_(rowData)],
     ["訂金", `NT. ${formatContractAmount_(rowData["已付訂金"])} 元`],
     ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
   ];
@@ -1915,8 +1913,55 @@ function appendContractFeeTable_(body, rowData) {
   appendCompactParagraph_(body, "訂金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。", CONTRACT_BODY_FONT_SIZE, 1, 0);
 }
 
+function appendContractDepositSection_(body, rowData) {
+  if (requiresCertificateDeposit_(rowData)) {
+    appendContractSection_(body, "八、押金及證件須知");
+    appendContractBullets_(body, [
+      "證件正本將於取機時收取，會在現場裝入破壞袋並請您簽名，保證租用期間未擅自拆封使用於其他用途。",
+      "還機時確認設備無異常後，現場退還押金及證件。",
+      "若設備損壞且金額不足以賠償，將扣押證件，並採取法律行動。"
+    ]);
+    return;
+  }
+
+  appendContractSection_(body, "八、押金須知");
+  appendContractBullets_(body, [
+    "還機時確認設備無異常後，現場退還押金。",
+    "若設備損壞且金額不足以賠償，將扣押證件，並採取法律行動。"
+  ]);
+}
+
 function getContractRentAmount_(rowData) {
   return rowData["預估租金"] || rowData["總租金"];
+}
+
+function getContractDepositDisplay_(rowData) {
+  const depositText = `NT. ${formatContractAmount_(rowData["押金"])} 元`;
+  return requiresCertificateDeposit_(rowData)
+    ? `${depositText} + 證件正本(身分證或駕照擇一)`
+    : depositText;
+}
+
+function requiresCertificateDeposit_(rowData) {
+  const depositOption = text_(rowData["押金方式"]);
+
+  if (/免證|不用證|不押證/i.test(depositOption)) {
+    return false;
+  }
+
+  if (/證件|押證|身分證|身份證|駕照/i.test(depositOption)) {
+    return true;
+  }
+
+  if (number_(rowData["已付訂金"]) >= 1000) {
+    return false;
+  }
+
+  if (number_(rowData["押金"]) >= 10000) {
+    return false;
+  }
+
+  return true;
 }
 
 function appendContractSignatureTable_(body, rowData) {
