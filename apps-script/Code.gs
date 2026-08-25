@@ -129,7 +129,12 @@ const CONTRACT_HEADERS = [
   "剩餘款項",
   "合約文件",
   "合約PDF",
-  "合約產生時間"
+  "合約產生時間",
+  "簽名連結",
+  "簽名狀態",
+  "簽名檔案",
+  "簽名時間",
+  "簽名金鑰"
 ];
 
 const CONTRACT_MANAGER_ACTIONS = {
@@ -250,6 +255,10 @@ function doGet(e) {
 
   if (params.action === "contractManager") {
     return handleContractManagerWebAction_(params);
+  }
+
+  if (params.action === "sign") {
+    return handleSignaturePage_(params);
   }
 
   if (params.action === "availability") {
@@ -1076,8 +1085,8 @@ function generateContractFromSelectedRow() {
     const context = getSelectedContractContext_();
     validateContractDetail_(context.rowData);
     const result = createContractFiles_(context.rowData);
-    writeContractResult_(context.sheet, context.headers, context.row, result);
-    showAlert_(`合約書已產生。\n\nGoogle 文件：${result.documentUrl}\nPDF：${result.pdfUrl}`);
+    const signatureUrl = writeContractResult_(context.sheet, context.headers, context.row, result);
+    showAlert_(`合約書已產生。\n\nGoogle 文件：${result.documentUrl}\nPDF：${result.pdfUrl}\n簽名連結：${signatureUrl}`);
   } catch (error) {
     showAlert_(error.message);
     throw error;
@@ -1181,6 +1190,103 @@ function handleContractManagerWebAction_(params) {
   }
 }
 
+function handleSignaturePage_(params) {
+  try {
+    const template = HtmlService.createTemplateFromFile("Signature");
+    template.bootstrapJson = JSON.stringify(getSignaturePageData_(params.id, params.token)).replace(/</g, "\\u003c");
+    return template.evaluate()
+      .setTitle("線上簽名")
+      .addMetaTag("viewport", "width=device-width, initial-scale=1");
+  } catch (error) {
+    return html_("簽名連結無效", error.message);
+  }
+}
+
+function getSignaturePageData_(reservationId, signatureToken) {
+  const context = getSignatureContractContext_(reservationId, signatureToken);
+  const rowData = context.rowData;
+
+  return {
+    reservationId: plainText_(rowData["預約編號"]),
+    customerName: plainText_(rowData["承租人姓名"]),
+    period: `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
+    contractPdfUrl: plainText_(rowData["合約PDF"]),
+    signatureStatus: plainText_(rowData["簽名狀態"]) || "待簽署",
+    signedAt: plainText_(rowData["簽名時間"]),
+    token: text_(signatureToken)
+  };
+}
+
+function submitSignature(payload) {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(5000)) {
+    return { ok: false, error: "系統忙碌中，請稍後再試。" };
+  }
+
+  try {
+    const data = payload || {};
+    const context = getSignatureContractContext_(data.reservationId, data.token);
+    const signatureDataUrl = plainText_(data.signatureDataUrl);
+    const signatureMatch = signatureDataUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+
+    if (!signatureMatch) {
+      throw new Error("簽名資料格式不正確，請重新簽名後送出。");
+    }
+
+    if (signatureMatch[1].length < 1200) {
+      throw new Error("簽名太短或沒有簽到，請重新簽名。");
+    }
+
+    const signedAt = new Date();
+    const reservationId = plainText_(context.rowData["預約編號"]);
+    const customerName = plainText_(context.rowData["承租人姓名"]) || "承租人";
+    const timestamp = Utilities.formatDate(signedAt, Session.getScriptTimeZone(), "yyyyMMdd-HHmmss");
+    const filename = sanitizeFilename_(`${reservationId} ${customerName} 線上簽名 ${timestamp}.png`);
+    const blob = Utilities.newBlob(Utilities.base64Decode(signatureMatch[1]), "image/png", filename);
+    const signatureFile = getContractFolder_().createFile(blob);
+
+    writeSignatureResult_(context.sheet, context.headers, context.row, signatureFile.getUrl(), signedAt);
+
+    return {
+      ok: true,
+      message: "簽名已送出，請回到對話視窗通知店家。",
+      signedAt: Utilities.formatDate(signedAt, Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm"),
+      fileUrl: signatureFile.getUrl()
+    };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getSignatureContractContext_(reservationId, signatureToken) {
+  const targetId = text_(reservationId);
+  const targetToken = text_(signatureToken);
+
+  if (!targetId || !targetToken) {
+    throw new Error("簽名連結缺少必要資訊，請向店家索取新的簽名連結。");
+  }
+
+  const sheet = getContractSheet_();
+  const headers = ensureContractHeaders_(sheet);
+  const row = findRowByHeaderValue_(sheet, headers, "預約編號", targetId);
+
+  if (!row) {
+    throw new Error("找不到這筆合約資料，請確認是否已產生合約。");
+  }
+
+  const context = getRowContext_(sheet, row);
+  const storedToken = text_(context.rowData["簽名金鑰"]);
+
+  if (!storedToken || storedToken !== targetToken) {
+    throw new Error("簽名連結已失效，請向店家索取新的簽名連結。");
+  }
+
+  return context;
+}
+
 function updateSelectedReservationStatus_(status) {
   try {
     const context = getSelectedReservationContextFromAnySheet_();
@@ -1233,8 +1339,8 @@ function generateContractFromManager_() {
   const context = getRowContext_(contractSheet, contractRow);
   validateContractDetail_(context.rowData);
   const result = createContractFiles_(context.rowData);
-  writeContractResult_(contractSheet, contractHeaders, contractRow, result);
-  return `合約書已產生：${manager.reservationId}。PDF 連結已寫入「合約明細」。`;
+  const signatureUrl = writeContractResult_(contractSheet, contractHeaders, contractRow, result);
+  return `合約書已產生：${manager.reservationId}。PDF 與簽名連結已寫入「合約明細」。\n簽名連結：${signatureUrl}`;
 }
 
 function updateReservationStatusFromManager_(status) {
@@ -1299,6 +1405,7 @@ function getSelectedContractContext_() {
   const activeSheet = spreadsheet.getActiveSheet();
 
   if (activeSheet.getName() === CONTRACT_SHEET_NAME) {
+    ensureContractHeaders_(activeSheet);
     return getSelectedRowContext_(activeSheet);
   }
 
@@ -1546,7 +1653,12 @@ function formatContractSheet_(sheet, headers) {
     "剩餘款項": 95,
     "合約文件": 260,
     "合約PDF": 260,
-    "合約產生時間": 150
+    "合約產生時間": 150,
+    "簽名連結": 260,
+    "簽名狀態": 90,
+    "簽名檔案": 260,
+    "簽名時間": 150,
+    "簽名金鑰": 220
   };
 
   headers.forEach((header, index) => {
@@ -1581,11 +1693,13 @@ function formatContractSheet_(sheet, headers) {
   });
   repairPhoneColumn_(sheet, headers);
 
-  const generatedAtColumn = getHeaderColumn_(headers, "合約產生時間");
+  ["合約產生時間", "簽名時間"].forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
 
-  if (generatedAtColumn) {
-    sheet.getRange(2, generatedAtColumn, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("yyyy-mm-dd hh:mm");
-  }
+    if (column) {
+      sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("yyyy-mm-dd hh:mm");
+    }
+  });
 }
 
 function buildContractDetailFromReservation_(reservationData) {
@@ -2080,11 +2194,17 @@ function setTableRowWidths_(row, widths) {
 }
 
 function writeContractResult_(sheet, headers, row, result) {
+  const rowData = getRowContext_(sheet, row).rowData;
+  const reservationId = text_(rowData["預約編號"]);
+  const signatureToken = getOrCreateSignatureToken_(sheet, headers, row);
+  const signatureUrl = buildSignatureUrl_(reservationId, signatureToken);
   const values = {
     "合約狀態": "已產生",
     "合約文件": result.documentUrl,
     "合約PDF": result.pdfUrl,
-    "合約產生時間": result.generatedAt
+    "合約產生時間": result.generatedAt,
+    "簽名連結": signatureUrl,
+    "簽名狀態": "待簽署"
   };
 
   Object.keys(values).forEach((header) => {
@@ -2096,6 +2216,48 @@ function writeContractResult_(sheet, headers, row, result) {
   });
 
   formatContractSheet_(sheet, headers);
+  return signatureUrl;
+}
+
+function writeSignatureResult_(sheet, headers, row, signatureFileUrl, signedAt) {
+  const values = {
+    "合約狀態": "已簽署",
+    "簽名狀態": "已簽署",
+    "簽名檔案": signatureFileUrl,
+    "簽名時間": signedAt
+  };
+
+  Object.keys(values).forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (column) {
+      sheet.getRange(row, column).setValue(values[header]);
+    }
+  });
+
+  formatContractSheet_(sheet, headers);
+}
+
+function getOrCreateSignatureToken_(sheet, headers, row) {
+  const tokenColumn = getHeaderColumn_(headers, "簽名金鑰");
+
+  if (!tokenColumn) {
+    throw new Error("找不到「簽名金鑰」欄位，請先重新整理合約明細。");
+  }
+
+  const currentToken = text_(sheet.getRange(row, tokenColumn).getDisplayValue());
+
+  if (currentToken) {
+    return currentToken;
+  }
+
+  const token = Utilities.getUuid().replace(/-/g, "");
+  sheet.getRange(row, tokenColumn).setValue(token);
+  return token;
+}
+
+function buildSignatureUrl_(reservationId, signatureToken) {
+  return `${WEB_APP_URL}?action=sign&id=${encodeURIComponent(reservationId)}&token=${encodeURIComponent(signatureToken)}`;
 }
 
 function getContractFolder_() {
