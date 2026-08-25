@@ -1861,15 +1861,24 @@ function appendContractSection_(body, title) {
 }
 
 function appendContractInfoTable_(body, rowData) {
-  const table = body.appendTable([
+  const customerTable = body.appendTable([
     ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
-    ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]],
-    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`, "", ""],
+    ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]]
+  ]);
+  styleContractTable_(customerTable, { headerRows: 0, labelColumns: [0, 2] });
+  setContractInfoFourColumnWidths_(customerTable);
+
+  const periodTable = body.appendTable([
+    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`]
+  ]);
+  styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
+  setContractPeriodTableWidths_(periodTable);
+
+  const locationTable = body.appendTable([
     ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
   ]);
-  mergeTableRowCells_(table, 2, 1, 3);
-  styleContractTable_(table, { headerRows: 0, labelColumns: [0, 2] });
-  setContractInfoTableWidths_(table);
+  styleContractTable_(locationTable, { headerRows: 0, labelColumns: [0, 2] });
+  setContractInfoFourColumnWidths_(locationTable);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1962,25 +1971,15 @@ function styleContractTable_(table, options) {
   }
 }
 
-function mergeTableRowCells_(table, rowIndex, startCellIndex, endCellIndex) {
-  const row = table.getRow(rowIndex);
-
-  for (let mergeCount = 0; mergeCount < endCellIndex - startCellIndex; mergeCount += 1) {
-    if (row.getNumCells() > startCellIndex + 1) {
-      row.getCell(startCellIndex + 1).merge();
-    }
+function setContractInfoFourColumnWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH, CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH]);
   }
 }
 
-function setContractInfoTableWidths_(table) {
+function setContractPeriodTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
-    const row = table.getRow(rowIndex);
-
-    if (row.getNumCells() <= 2) {
-      setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
-    } else {
-      setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH, CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH]);
-    }
+    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
   }
 }
 
