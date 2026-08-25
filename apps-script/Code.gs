@@ -2,6 +2,7 @@ const SHEET_NAME = "預約資料";
 const SPREADSHEET_NAME = "手機租借預約資料";
 const FALLBACK_SPREADSHEET_ID = "1B_5iMvLi1d7rehoQUNY8skj6X4D1ZRhct7v54ejnNvM";
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby8Wiakvm3uRG045HPYtyOd-BlqDd5f7X_TFDLpOUIWgJkb9VEdo63yJqN6MHe3Rb3TzQ/exec";
+const SIGNATURE_PAGE_URL = "https://gem0816phone.github.io/phone-rental/sign.html";
 const ITEM_PHONE = "vivo-x300-ultra";
 const ITEM_LENS = "g2-ultra-400mm";
 const ITEM_RAYBAN = "ray-ban-meta";
@@ -267,6 +268,10 @@ function doGet(e) {
     return handleSignaturePage_(params);
   }
 
+  if (params.action === "signatureData") {
+    return handleSignatureData_(params);
+  }
+
   if (params.action === "availability") {
     const requestedItemIds = getRequestedItemIds_(params);
     const availability = getCachedAvailabilityByDate_(requestedItemIds);
@@ -299,6 +304,12 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  const data = (e && e.parameter) || {};
+
+  if (data.action === "submitSignature") {
+    return json_(submitSignature(data));
+  }
+
   const lock = LockService.getScriptLock();
 
   if (!lock.tryLock(5000)) {
@@ -306,8 +317,6 @@ function doPost(e) {
   }
 
   try {
-    const data = e.parameter || {};
-
     if (data.companyWebsite) {
       return json_({ ok: true, skipped: true });
     }
@@ -1218,6 +1227,23 @@ function handleSignaturePage_(params) {
       .addMetaTag("viewport", "width=device-width, initial-scale=1");
   } catch (error) {
     return html_("簽名連結無效", error.message);
+  }
+}
+
+function handleSignatureData_(params) {
+  try {
+    return output_(
+      Object.assign({ ok: true }, getSignaturePageData_(params.id, params.token)),
+      params.callback
+    );
+  } catch (error) {
+    return output_(
+      {
+        ok: false,
+        error: error.message
+      },
+      params.callback
+    );
   }
 }
 
@@ -2328,7 +2354,7 @@ function getOrCreateSignatureToken_(sheet, headers, row) {
 }
 
 function buildSignatureUrl_(reservationId, signatureToken) {
-  return `${WEB_APP_URL}?action=sign&id=${encodeURIComponent(reservationId)}&token=${encodeURIComponent(signatureToken)}`;
+  return `${SIGNATURE_PAGE_URL}?id=${encodeURIComponent(reservationId)}&token=${encodeURIComponent(signatureToken)}`;
 }
 
 function getContractFolder_() {

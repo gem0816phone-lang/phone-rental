@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>@gem0816phone 線上簽名</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #111827;
+        --muted: #64748b;
+        --line: #d9e2ec;
+        --primary: #2563eb;
+        --danger: #dc2626;
+        --ok: #047857;
+        --bg: #f6f8fb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(720px, 100%);
+        margin: 0 auto;
+        padding: 18px 14px 28px;
+      }
+
+      header {
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.25;
+      }
+
+      .sub {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      .info {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .info div {
+        padding: 9px 10px;
+        border-bottom: 1px solid #eef2f7;
+        font-size: 14px;
+      }
+
+      .info div:nth-child(odd) {
+        background: #f8fafc;
+        color: #1f4d78;
+        font-weight: 700;
+      }
+
+      .info div:nth-last-child(-n+2) {
+        border-bottom: 0;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      a.button,
+      button {
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 14px;
+        background: #ffffff;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      button.primary {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #ffffff;
+      }
+
+      button:disabled,
+      button.primary:disabled {
+        border-color: #cbd5e1;
+        background: #cbd5e1;
+        color: #ffffff;
+        cursor: not-allowed;
+      }
+
+      .signature-wrap {
+        padding: 12px;
+      }
+
+      .canvas-box {
+        border: 1px solid #94a3b8;
+        border-radius: 8px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      canvas {
+        width: 100%;
+        height: 260px;
+        display: block;
+        touch-action: none;
+      }
+
+      .hint {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      label.confirm {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 12px;
+        border-top: 1px solid var(--line);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-top: 1px;
+      }
+
+      .status {
+        min-height: 22px;
+        margin-top: 12px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .status.ok {
+        color: var(--ok);
+        font-weight: 700;
+      }
+
+      @media (max-width: 520px) {
+        main {
+          padding: 14px 10px 24px;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        canvas {
+          height: 230px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>@gem0816phone 線上簽名</h1>
+        <div class="sub">請確認合約內容後，在下方手寫簽名並送出。</div>
+      </header>
+
+      <section class="panel">
+        <div class="info">
+          <div>預約編號</div>
+          <div id="reservationId"></div>
+          <div>承租人</div>
+          <div id="customerName"></div>
+          <div>租借期間</div>
+          <div id="period"></div>
+          <div>簽名狀態</div>
+          <div id="signatureStatus"></div>
+        </div>
+
+        <div class="actions">
+          <a class="button" id="contractLink" href="#" target="_blank" rel="noopener">查看合約 PDF</a>
+          <button type="button" id="clearButton" disabled>清除簽名</button>
+        </div>
+
+        <div class="signature-wrap">
+          <div class="canvas-box">
+            <canvas id="signatureCanvas"></canvas>
+          </div>
+          <p class="hint">請用手指或觸控筆在白色區域簽名。</p>
+        </div>
+
+        <label class="confirm">
+          <input id="agree" type="checkbox" disabled>
+          <span>我已閱讀並同意合約內容，確認以此電子簽名完成簽署。</span>
+        </label>
+
+        <div class="actions">
+          <button type="button" class="primary" id="submitButton" disabled>送出簽名</button>
+        </div>
+      </section>
+
+      <div class="status" id="status"></div>
+    </main>
+
+    <script src="config.js"></script>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const reservationIdFromUrl = params.get("id") || "";
+      const signatureTokenFromUrl = params.get("token") || "";
+      const config = window.PHONE_RENTAL_CONFIG || {};
+      const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+      const endpoint = config.appsScriptUrl && config.appsScriptUrl !== placeholderEndpoint
+        ? config.appsScriptUrl
+        : "";
+
+      const canvas = document.getElementById("signatureCanvas");
+      const context = canvas.getContext("2d");
+      const statusEl = document.getElementById("status");
+      const submitButton = document.getElementById("submitButton");
+      const clearButton = document.getElementById("clearButton");
+      const agree = document.getElementById("agree");
+      const contractLink = document.getElementById("contractLink");
+      let drawing = false;
+      let hasSignature = false;
+      let signatureData = null;
+
+      function setStatus(message, type) {
+        statusEl.textContent = message;
+        statusEl.className = `status ${type || ""}`.trim();
+      }
+
+      function setControlsEnabled(enabled) {
+        submitButton.disabled = !enabled;
+        clearButton.disabled = !enabled;
+        agree.disabled = !enabled;
+      }
+
+      function renderData(data) {
+        signatureData = data;
+        document.getElementById("reservationId").textContent = data.reservationId || "";
+        document.getElementById("customerName").textContent = data.customerName || "";
+        document.getElementById("period").textContent = data.period || "";
+        document.getElementById("signatureStatus").textContent = data.signatureStatus || "待簽署";
+
+        if (data.contractPdfUrl) {
+          contractLink.href = data.contractPdfUrl;
+          contractLink.style.display = "";
+        } else {
+          contractLink.style.display = "none";
+        }
+
+        setControlsEnabled(true);
+      }
+
+      function buildEndpointUrl(extraParams) {
+        const url = new URL(endpoint);
+        Object.keys(extraParams).forEach((key) => {
+          url.searchParams.set(key, extraParams[key]);
+        });
+        return url.toString();
+      }
+
+      async function loadSignatureData() {
+        if (!endpoint || !reservationIdFromUrl || !signatureTokenFromUrl) {
+          throw new Error("簽名連結缺少必要資訊，請向店家索取新的簽名連結。");
+        }
+
+        const url = buildEndpointUrl({
+          action: "signatureData",
+          id: reservationIdFromUrl,
+          token: signatureTokenFromUrl,
+          cachebust: String(Date.now())
+        });
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "omit"
+        });
+
+        if (!response.ok) {
+          throw new Error("無法讀取合約資料，請稍後再試。");
+        }
+
+        const payload = await response.json();
+
+        if (!payload || !payload.ok) {
+          throw new Error((payload && payload.error) || "簽名連結無效，請向店家索取新的簽名連結。");
+        }
+
+        return payload;
+      }
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = Math.round(rect.width * ratio);
+        canvas.height = Math.round(rect.height * ratio);
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        context.lineWidth = 2.6;
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.strokeStyle = "#111827";
+        clearSignature();
+      }
+
+      function pointFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      function beginDraw(event) {
+        if (!signatureData) {
+          return;
+        }
+
+        event.preventDefault();
+        drawing = true;
+        hasSignature = true;
+        canvas.setPointerCapture(event.pointerId);
+        const point = pointFromEvent(event);
+        context.beginPath();
+        context.moveTo(point.x, point.y);
+      }
+
+      function moveDraw(event) {
+        if (!drawing) {
+          return;
+        }
+
+        event.preventDefault();
+        const point = pointFromEvent(event);
+        context.lineTo(point.x, point.y);
+        context.stroke();
+      }
+
+      function endDraw(event) {
+        if (!drawing) {
+          return;
+        }
+
+        drawing = false;
+        try {
+          canvas.releasePointerCapture(event.pointerId);
+        } catch (error) {}
+      }
+
+      function clearSignature() {
+        context.save();
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.restore();
+        hasSignature = false;
+
+        if (signatureData) {
+          setStatus("");
+        }
+      }
+
+      function exportSignature() {
+        const output = document.createElement("canvas");
+        output.width = canvas.width;
+        output.height = canvas.height;
+        const outputContext = output.getContext("2d");
+        outputContext.fillStyle = "#ffffff";
+        outputContext.fillRect(0, 0, output.width, output.height);
+        outputContext.drawImage(canvas, 0, 0);
+        return output.toDataURL("image/png");
+      }
+
+      async function submitSignature() {
+        if (!signatureData) {
+          setStatus("合約資料尚未載入完成。", "error");
+          return;
+        }
+
+        if (!hasSignature) {
+          setStatus("請先在白色區域簽名。", "error");
+          return;
+        }
+
+        if (!agree.checked) {
+          setStatus("請先勾選已閱讀並同意合約內容。", "error");
+          return;
+        }
+
+        const signatureDataUrl = exportSignature();
+
+        if (signatureDataUrl.length < 1200) {
+          setStatus("簽名太短或沒有簽到，請重新簽名。", "error");
+          return;
+        }
+
+        setControlsEnabled(false);
+        submitButton.textContent = "送出中...";
+        setStatus("正在送出簽名...");
+
+        try {
+          const payload = new FormData();
+          payload.set("action", "submitSignature");
+          payload.set("reservationId", signatureData.reservationId);
+          payload.set("token", signatureTokenFromUrl);
+          payload.set("signatureDataUrl", signatureDataUrl);
+
+          await fetch(endpoint, {
+            method: "POST",
+            mode: "no-cors",
+            credentials: "omit",
+            body: payload
+          });
+
+          document.getElementById("signatureStatus").textContent = "已簽署";
+          setStatus("簽名已送出，請回到對話視窗通知店家。", "ok");
+          submitButton.textContent = "已送出";
+        } catch (error) {
+          setControlsEnabled(true);
+          submitButton.textContent = "送出簽名";
+          setStatus("送出失敗，請稍後再試，或直接聯絡店家。", "error");
+        }
+      }
+
+      canvas.addEventListener("pointerdown", beginDraw);
+      canvas.addEventListener("pointermove", moveDraw);
+      canvas.addEventListener("pointerup", endDraw);
+      canvas.addEventListener("pointercancel", endDraw);
+      clearButton.addEventListener("click", clearSignature);
+      submitButton.addEventListener("click", submitSignature);
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      setStatus("正在讀取合約資料...");
+      loadSignatureData()
+        .then((data) => {
+          renderData(data);
+          setStatus("");
+        })
+        .catch((error) => {
+          setControlsEnabled(false);
+          setStatus(error.message || "簽名連結無效，請向店家索取新的簽名連結。", "error");
+        });
+    </script>
+  </body>
+</html>
