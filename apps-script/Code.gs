@@ -1811,7 +1811,7 @@ function createContractFiles_(rowData) {
   appendContractBullets_(body, ["還機時確認設備無異常後，現場退還押金。"]);
   appendContractSection_(body, "九、簽名確認");
   appendContractSignatureTable_(body, rowData);
-  appendCompactParagraph_(body, "承租人確認已閱讀、理解並同意本合約全部內容，且同意依本合約約定租借、使用及歸還設備。", CONTRACT_BODY_FONT_SIZE, 4, 0);
+  appendContractFinalConfirmation_(body);
 
   document.saveAndClose();
 
@@ -1915,6 +1915,7 @@ function appendContractSignatureTable_(body, rowData) {
   ]);
   styleContractTable_(table, { headerRows: 0, labelColumns: [0] });
   setTwoColumnTableWidths_(table);
+  styleSignatureDateRow_(table);
 }
 
 function appendContractBullets_(body, items) {
@@ -1930,6 +1931,11 @@ function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAft
   paragraph.setSpacingBefore(spacingBefore).setSpacingAfter(spacingAfter).setLineSpacing(1);
   paragraph.editAsText().setFontSize(fontSize);
   return paragraph;
+}
+
+function appendContractFinalConfirmation_(body) {
+  appendCompactParagraph_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", CONTRACT_BODY_FONT_SIZE, 4, 0);
+  appendCompactParagraph_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", CONTRACT_BODY_FONT_SIZE, 0, 0);
 }
 
 function styleContractTable_(table, options) {
@@ -1981,6 +1987,15 @@ function setContractInfoTableWidths_(table) {
 function setTwoColumnTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_LABEL_COLUMN_WIDTH, CONTRACT_VALUE_COLUMN_WIDTH]);
+  }
+}
+
+function styleSignatureDateRow_(table) {
+  const row = table.getRow(1);
+  row.setMinimumHeight(32);
+
+  for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
+    row.getCell(cellIndex).setVerticalAlignment(DocumentApp.VerticalAlignment.BOTTOM);
   }
 }
 
