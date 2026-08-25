@@ -1878,9 +1878,11 @@ function appendContractInfoTable_(body, rowData) {
   setContractInfoTableWidths_(infoTable);
 
   const periodTable = body.appendTable([
-    ["租借期間", `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`]
+    ["租借期間", `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`, "", ""]
   ]);
   styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
+  setContractInfoTableWidths_(periodTable);
+  mergeContractInfoPeriodValueCells_(periodTable);
   setContractInfoTableWidths_(periodTable);
 }
 
@@ -1971,6 +1973,14 @@ function styleContractTable_(table, options) {
         cell.editAsText().setBold(true);
       }
     }
+  }
+}
+
+function mergeContractInfoPeriodValueCells_(table) {
+  const row = table.getRow(0);
+
+  while (row.getNumCells() > 2) {
+    row.getCell(2).merge();
   }
 }
 
