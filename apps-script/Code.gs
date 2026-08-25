@@ -1350,6 +1350,8 @@ function getContractManagerSheet_() {
 }
 
 function formatContractManagerSheet_(sheet) {
+  ensureSheetSize_(sheet, 11, 3);
+
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
     : ["", "", "", ""];
@@ -1449,6 +1451,8 @@ function validateContractManagerActionKey_(key) {
 }
 
 function ensureContractHeaders_(sheet) {
+  ensureSheetSize_(sheet, 1, CONTRACT_HEADERS.length);
+
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(CONTRACT_HEADERS);
     formatContractSheet_(sheet, CONTRACT_HEADERS);
@@ -1460,6 +1464,7 @@ function ensureContractHeaders_(sheet) {
   const headers = currentHeaders.concat(missingHeaders);
 
   if (missingHeaders.length) {
+    ensureSheetSize_(sheet, 1, headers.length);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
 
@@ -1471,6 +1476,7 @@ function formatContractSheet_(sheet, headers) {
   const lastRow = Math.max(sheet.getLastRow(), 1);
   const lastColumn = headers.length;
 
+  ensureSheetSize_(sheet, lastRow, lastColumn);
   sheet.setFrozenRows(1);
   sheet.setFrozenColumns(1);
   sheet.getRange(1, 1, 1, lastColumn)
@@ -1617,6 +1623,7 @@ function upsertContractDetail_(sheet, headers, detail) {
     sheet.insertRowsAfter(sheet.getMaxRows(), row - sheet.getMaxRows());
   }
 
+  ensureSheetSize_(sheet, row, headers.length);
   const currentValues = isNew
     ? CONTRACT_HEADERS.map(() => "")
     : sheet.getRange(row, 1, 1, headers.length).getDisplayValues()[0];
@@ -1637,6 +1644,16 @@ function upsertContractDetail_(sheet, headers, detail) {
   sheet.getRange(row, 1, 1, headers.length).setValues([nextValues]);
   formatContractSheet_(sheet, headers);
   return row;
+}
+
+function ensureSheetSize_(sheet, minRows, minColumns) {
+  if (sheet.getMaxRows() < minRows) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), minRows - sheet.getMaxRows());
+  }
+
+  if (sheet.getMaxColumns() < minColumns) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), minColumns - sheet.getMaxColumns());
+  }
 }
 
 function shouldRefreshContractDetailValue_(header, currentValue, nextValue) {
