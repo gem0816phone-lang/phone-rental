@@ -139,6 +139,12 @@ function installPhoneRentalManager() {
   getContractManagerSheet_();
   getContractSheet_();
 
+  const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
+
+  return `已建立合約管理表，${triggerMessage}：${spreadsheet.getUrl()}`;
+}
+
+function installPhoneRentalManagerTriggers_(spreadsheet) {
   try {
     ScriptApp.getProjectTriggers().forEach((trigger) => {
       if (trigger.getHandlerFunction() === "onSpreadsheetOpen_" || trigger.getHandlerFunction() === "onContractManagerEdit_") {
@@ -159,7 +165,7 @@ function installPhoneRentalManager() {
     .onEdit()
     .create();
 
-  return `已安裝管理選單觸發器：${spreadsheet.getUrl()}`;
+  return "已安裝管理選單與勾選操作";
 }
 
 function onContractManagerEdit_(e) {
@@ -1063,9 +1069,11 @@ function markSelectedReservationCanceled() {
 }
 
 function setupContractManager() {
+  const spreadsheet = getReservationSpreadsheet_();
   getContractManagerSheet_();
   getContractSheet_();
-  showAlert_("已建立「合約操作」與「合約明細」工作表。");
+  const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
+  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B10 執行。`);
 }
 
 function prepareContractDetailFromManager() {
@@ -1345,7 +1353,6 @@ function formatContractManagerSheet_(sheet) {
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
     : ["", "", "", ""];
-  const managerActionKey = getContractManagerActionKey_();
 
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).clearDataValidations();
   sheet.clear();
@@ -1384,10 +1391,10 @@ function formatContractManagerSheet_(sheet) {
     .setVerticalAlignment("middle")
     .setWrap(true);
   sheet.getRange("B7:B10").clearDataValidations();
-  sheet.getRange("B7").setFormula(makeContractManagerActionFormula_("prepare", "點我建立明細", managerActionKey));
-  sheet.getRange("B8").setFormula(makeContractManagerActionFormula_("generate", "點我產生合約", managerActionKey));
-  sheet.getRange("B9").setFormula(makeContractManagerActionFormula_("confirm", "點我標記已確認", managerActionKey));
-  sheet.getRange("B10").setFormula(makeContractManagerActionFormula_("cancel", "點我標記已取消", managerActionKey));
+  sheet.getRange("B7:B10")
+    .clearContent()
+    .insertCheckboxes()
+    .setValue(false);
   sheet.getRange("B7:B10")
     .setBackground("#eff6ff")
     .setFontColor("#1d4ed8")
