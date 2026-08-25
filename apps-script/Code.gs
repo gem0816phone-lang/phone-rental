@@ -2416,7 +2416,7 @@ function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAft
 }
 
 function appendContractFinalConfirmation_(body) {
-  appendContractFinalLine_(body, "訂金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。", 4);
+  appendContractFinalLine_(body, "訂金交付+手持證件自拍(可上浮水印)，才會鎖定檔期，剩餘款項將於取機面交時當面付清。", 4);
   appendContractFinalLine_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", 0);
   appendContractFinalLine_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", 0);
 }
