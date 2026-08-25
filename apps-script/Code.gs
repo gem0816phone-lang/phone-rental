@@ -1878,12 +1878,10 @@ function appendContractInfoTable_(body, rowData) {
   setContractInfoTableWidths_(infoTable);
 
   const periodTable = body.appendTable([
-    ["租借期間", `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`, "", ""]
+    ["租借期間", `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`]
   ]);
   styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
-  setContractInfoTableWidths_(periodTable);
-  mergeContractInfoPeriodValueCells_(periodTable);
-  setContractInfoTableWidths_(periodTable);
+  setContractPeriodTableWidths_(periodTable);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1976,14 +1974,6 @@ function styleContractTable_(table, options) {
   }
 }
 
-function mergeContractInfoPeriodValueCells_(table) {
-  const row = table.getRow(0);
-
-  while (row.getNumCells() > 2) {
-    row.getCell(2).merge();
-  }
-}
-
 function setContractInfoTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     const row = table.getRow(rowIndex);
@@ -1998,6 +1988,12 @@ function setContractInfoTableWidths_(table) {
         CONTRACT_INFO_VALUE_WIDTH
       ]);
     }
+  }
+}
+
+function setContractPeriodTableWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
   }
 }
 
