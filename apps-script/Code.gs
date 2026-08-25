@@ -1083,8 +1083,15 @@ function setupContractManager() {
   const spreadsheet = getReservationSpreadsheet_();
   getContractManagerSheet_();
   getContractSheet_();
+  getContractFolder_();
   const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
-  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B10 執行。`);
+  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B10 執行。`);
+}
+
+function authorizePhoneRentalPermissions() {
+  const spreadsheet = getReservationSpreadsheet_();
+  const folder = getContractFolder_();
+  showAlert_(`授權確認完成。\n\n試算表：${spreadsheet.getName()}\n合約資料夾：${folder.getName()}`);
 }
 
 function prepareContractDetailFromManager() {
