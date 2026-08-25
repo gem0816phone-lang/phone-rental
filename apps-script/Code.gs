@@ -1910,7 +1910,6 @@ function appendContractFeeTable_(body, rowData) {
   const table = body.appendTable(rows);
   styleContractTable_(table, { headerRows: 1, labelColumns: [0] });
   setTwoColumnTableWidths_(table);
-  appendCompactParagraph_(body, "訂金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。", CONTRACT_BODY_FONT_SIZE, 1, 0);
 }
 
 function appendContractDepositSection_(body, rowData) {
@@ -1989,8 +1988,14 @@ function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAft
 }
 
 function appendContractFinalConfirmation_(body) {
-  appendCompactParagraph_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", CONTRACT_BODY_FONT_SIZE, 4, 0);
-  appendCompactParagraph_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", CONTRACT_BODY_FONT_SIZE, 0, 0);
+  appendContractFinalLine_(body, "訂金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。", 4);
+  appendContractFinalLine_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", 0);
+  appendContractFinalLine_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", 0);
+}
+
+function appendContractFinalLine_(body, text, spacingBefore) {
+  const paragraph = appendCompactParagraph_(body, text, CONTRACT_BODY_FONT_SIZE, spacingBefore, 0);
+  paragraph.editAsText().setBold(true);
 }
 
 function styleContractTable_(table, options) {
