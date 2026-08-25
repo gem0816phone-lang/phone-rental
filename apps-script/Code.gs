@@ -1623,6 +1623,10 @@ function upsertContractDetail_(sheet, headers, detail) {
   const nextValues = headers.map((header, index) => {
     const currentValue = currentValues[index];
 
+    if (!isNew && shouldRefreshContractDetailValue_(header, currentValue, detail[header])) {
+      return valueOrBlank_(detail, header);
+    }
+
     if (!isNew && text_(currentValue)) {
       return currentValue;
     }
@@ -1633,6 +1637,25 @@ function upsertContractDetail_(sheet, headers, detail) {
   sheet.getRange(row, 1, 1, headers.length).setValues([nextValues]);
   formatContractSheet_(sheet, headers);
   return row;
+}
+
+function shouldRefreshContractDetailValue_(header, currentValue, nextValue) {
+  const autoRefreshHeaders = ["總租金", "押金", "已付訂金", "剩餘款項"];
+
+  if (autoRefreshHeaders.indexOf(header) === -1) {
+    return false;
+  }
+
+  const nextNumber = number_(nextValue);
+
+  if (nextNumber === "") {
+    return false;
+  }
+
+  const currentText = text_(currentValue);
+  const currentNumber = number_(currentValue);
+
+  return !currentText || currentNumber === 0 || isBlankOrSheetError_(currentText);
 }
 
 function findRowByHeaderValue_(sheet, headers, header, value) {
@@ -2481,7 +2504,20 @@ function plainText_(value) {
 }
 
 function number_(value) {
-  const numberValue = Number(value);
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : "";
+  }
+
+  const normalizedValue = plainText_(value)
+      .replace(/^'/, "")
+      .replace(/,/g, "");
+  const numberMatches = normalizedValue.match(/-?\d+(?:\.\d+)?/g);
+
+  if (!numberMatches || !numberMatches.length) {
+    return "";
+  }
+
+  const numberValue = Number(numberMatches[numberMatches.length - 1]);
   return Number.isFinite(numberValue) ? numberValue : "";
 }
 
