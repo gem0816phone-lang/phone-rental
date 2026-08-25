@@ -1869,15 +1869,19 @@ function appendContractSection_(body, title) {
 }
 
 function appendContractInfoTable_(body, rowData) {
-  const table = body.appendTable([
+  const infoTable = body.appendTable([
     ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
     ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]],
-    ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]],
-    [`租借期間 ${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`, "", "", ""]
+    ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
   ]);
-  mergeContractInfoFullRow_(table, 3);
-  styleContractTable_(table, { headerRows: 0, labelColumns: [0, 2] });
-  setContractInfoTableWidths_(table);
+  styleContractTable_(infoTable, { headerRows: 0, labelColumns: [0, 2] });
+  setContractInfoTableWidths_(infoTable);
+
+  const periodTable = body.appendTable([
+    ["租借期間", `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`]
+  ]);
+  styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
+  setContractInfoTableWidths_(periodTable);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1967,14 +1971,6 @@ function styleContractTable_(table, options) {
         cell.editAsText().setBold(true);
       }
     }
-  }
-}
-
-function mergeContractInfoFullRow_(table, rowIndex) {
-  const row = table.getRow(rowIndex);
-
-  while (row.getNumCells() > 1) {
-    row.getCell(1).merge();
   }
 }
 
