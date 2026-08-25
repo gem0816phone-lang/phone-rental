@@ -1347,6 +1347,7 @@ function formatContractManagerSheet_(sheet) {
     : ["", "", "", ""];
   const managerActionKey = getContractManagerActionKey_();
 
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).clearDataValidations();
   sheet.clear();
   sheet.setFrozenRows(1);
   sheet.setColumnWidth(1, 180);
@@ -1382,6 +1383,7 @@ function formatContractManagerSheet_(sheet) {
   sheet.getRange("A1:C11")
     .setVerticalAlignment("middle")
     .setWrap(true);
+  sheet.getRange("B7:B10").clearDataValidations();
   sheet.getRange("B7").setFormula(makeContractManagerActionFormula_("prepare", "點我建立明細", managerActionKey));
   sheet.getRange("B8").setFormula(makeContractManagerActionFormula_("generate", "點我產生合約", managerActionKey));
   sheet.getRange("B9").setFormula(makeContractManagerActionFormula_("confirm", "點我標記已確認", managerActionKey));
