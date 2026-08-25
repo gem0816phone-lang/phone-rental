@@ -17,6 +17,7 @@ const TELEGRAM_BOT_TOKEN_PROPERTY = "TELEGRAM_BOT_TOKEN";
 const TELEGRAM_CHAT_ID_PROPERTY = "TELEGRAM_CHAT_ID";
 const TELEGRAM_SEPARATOR = "-------------------------------------------------";
 const CONTRACT_SHEET_NAME = "合約明細";
+const CONTRACT_MANAGER_SHEET_NAME = "合約操作";
 const CONTRACT_FOLDER_NAME = "手機租借合約書";
 const CONTRACT_FOLDER_ID_PROPERTY = "CONTRACT_FOLDER_ID";
 const CONTRACT_LESSOR_NAME_PROPERTY = "CONTRACT_LESSOR_NAME";
@@ -116,6 +117,13 @@ const CONTRACT_HEADERS = [
   "合約產生時間"
 ];
 
+const CONTRACT_MANAGER_ACTIONS = {
+  7: "prepare",
+  8: "generate",
+  9: "confirm",
+  10: "cancel"
+};
+
 function onOpen() {
   addPhoneRentalMenu_();
 }
@@ -126,10 +134,12 @@ function onSpreadsheetOpen_() {
 
 function installPhoneRentalManager() {
   const spreadsheet = SpreadsheetApp.openById(FALLBACK_SPREADSHEET_ID);
+  getContractManagerSheet_();
+  getContractSheet_();
 
   try {
     ScriptApp.getProjectTriggers().forEach((trigger) => {
-      if (trigger.getHandlerFunction() === "onSpreadsheetOpen_") {
+      if (trigger.getHandlerFunction() === "onSpreadsheetOpen_" || trigger.getHandlerFunction() === "onContractManagerEdit_") {
         ScriptApp.deleteTrigger(trigger);
       }
     });
@@ -142,7 +152,59 @@ function installPhoneRentalManager() {
     .onOpen()
     .create();
 
+  ScriptApp.newTrigger("onContractManagerEdit_")
+    .forSpreadsheet(spreadsheet)
+    .onEdit()
+    .create();
+
   return `已安裝管理選單觸發器：${spreadsheet.getUrl()}`;
+}
+
+function onContractManagerEdit_(e) {
+  if (!e || !e.range || text_(e.value).toUpperCase() !== "TRUE") {
+    return;
+  }
+
+  const range = e.range;
+  const sheet = range.getSheet();
+
+  if (sheet.getName() !== CONTRACT_MANAGER_SHEET_NAME || range.getColumn() !== 2) {
+    return;
+  }
+
+  const action = CONTRACT_MANAGER_ACTIONS[range.getRow()];
+
+  if (!action) {
+    return;
+  }
+
+  try {
+    range.setValue(false);
+
+    let message = "";
+
+    if (action === "prepare") {
+      message = prepareContractDetailFromManager_();
+    }
+
+    if (action === "generate") {
+      message = generateContractFromManager_();
+    }
+
+    if (action === "confirm") {
+      message = updateReservationStatusFromManager_("已確認");
+    }
+
+    if (action === "cancel") {
+      message = updateReservationStatusFromManager_("已取消");
+    }
+
+    writeContractManagerStatus_(message);
+  } catch (error) {
+    range.setValue(false);
+    writeContractManagerStatus_(`錯誤：${error.message}`);
+    throw error;
+  }
 }
 
 function addPhoneRentalMenu_() {
@@ -994,6 +1056,52 @@ function markSelectedReservationCanceled() {
   updateSelectedReservationStatus_("已取消");
 }
 
+function setupContractManager() {
+  getContractManagerSheet_();
+  getContractSheet_();
+  showAlert_("已建立「合約操作」與「合約明細」工作表。");
+}
+
+function prepareContractDetailFromManager() {
+  try {
+    const message = prepareContractDetailFromManager_();
+    showAlert_(message);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function generateContractFromManager() {
+  try {
+    const message = generateContractFromManager_();
+    showAlert_(message);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function markManagerReservationConfirmed() {
+  try {
+    const message = updateReservationStatusFromManager_("已確認");
+    showAlert_(message);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function markManagerReservationCanceled() {
+  try {
+    const message = updateReservationStatusFromManager_("已取消");
+    showAlert_(message);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
 function updateSelectedReservationStatus_(status) {
   try {
     const context = getSelectedReservationContextFromAnySheet_();
@@ -1010,6 +1118,58 @@ function updateSelectedReservationStatus_(status) {
     showAlert_(error.message);
     throw error;
   }
+}
+
+function prepareContractDetailFromManager_() {
+  const manager = getContractManagerData_();
+  const reservationContext = getReservationContextById_(manager.reservationId);
+  const contractSheet = getContractSheet_();
+  const contractHeaders = ensureContractHeaders_(contractSheet);
+  const detail = buildContractDetailFromReservation_(reservationContext.rowData);
+
+  if (manager.lessorName) {
+    detail["出租人姓名"] = manager.lessorName;
+  }
+
+  if (manager.lessorPhone) {
+    detail["出租人電話"] = manager.lessorPhone;
+  }
+
+  const row = upsertContractDetail_(contractSheet, contractHeaders, detail);
+  contractSheet.activate();
+  contractSheet.setActiveRange(contractSheet.getRange(row, 1, 1, contractHeaders.length));
+  return `已建立/更新合約明細：${manager.reservationId}。請到「合約明細」第 ${row} 列確認細項。`;
+}
+
+function generateContractFromManager_() {
+  const manager = getContractManagerData_();
+  const contractSheet = getContractSheet_();
+  const contractHeaders = ensureContractHeaders_(contractSheet);
+  const contractRow = findRowByHeaderValue_(contractSheet, contractHeaders, "預約編號", manager.reservationId);
+
+  if (!contractRow) {
+    throw new Error("尚未建立合約明細，請先勾選「建立/更新合約明細」。");
+  }
+
+  const context = getRowContext_(contractSheet, contractRow);
+  validateContractDetail_(context.rowData);
+  const result = createContractFiles_(context.rowData);
+  writeContractResult_(contractSheet, contractHeaders, contractRow, result);
+  return `合約書已產生：${manager.reservationId}。PDF 連結已寫入「合約明細」。`;
+}
+
+function updateReservationStatusFromManager_(status) {
+  const manager = getContractManagerData_();
+  const context = getReservationContextById_(manager.reservationId);
+  const statusColumn = getHeaderColumn_(context.headers, "狀態");
+
+  if (!statusColumn) {
+    throw new Error("找不到「狀態」欄位。");
+  }
+
+  context.sheet.getRange(context.row, statusColumn).setValue(status);
+  clearAvailabilityCache_();
+  return `預約 ${manager.reservationId} 已標記為「${status}」。`;
 }
 
 function getSelectedReservationContext_() {
@@ -1133,6 +1293,84 @@ function getContractSheet_() {
 
   ensureContractHeaders_(sheet);
   return sheet;
+}
+
+function getContractManagerSheet_() {
+  const spreadsheet = getReservationSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(CONTRACT_MANAGER_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(CONTRACT_MANAGER_SHEET_NAME);
+  }
+
+  formatContractManagerSheet_(sheet);
+  return sheet;
+}
+
+function formatContractManagerSheet_(sheet) {
+  const existingValues = sheet.getLastRow() >= 5
+    ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
+    : ["", "", "", ""];
+
+  sheet.clear();
+  sheet.setFrozenRows(1);
+  sheet.setColumnWidth(1, 180);
+  sheet.setColumnWidth(2, 360);
+  sheet.setColumnWidth(3, 420);
+
+  sheet.getRange("A1:C1").merge()
+    .setValue("合約操作")
+    .setBackground("#7c3aed")
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center");
+
+  const rows = [
+    ["預約編號", existingValues[0], "先填要處理的預約編號，例如 G45678"],
+    ["出租人姓名", existingValues[1], "可先留空；建立合約明細後也能再補"],
+    ["出租人電話", existingValues[2], "可先留空；建立合約明細後也能再補"],
+    ["執行結果", existingValues[3], "這裡會顯示最後一次操作結果"],
+    ["", "", ""],
+    ["建立/更新合約明細", false, "先把預約資料帶到「合約明細」給你確認"],
+    ["產生合約書", false, "確認「合約明細」後再勾選，會建立 Google 文件與 PDF"],
+    ["標記已確認", false, "收到訂金、確定出租後再勾選，日期才會正式鎖住"],
+    ["標記已取消", false, "取消預約時使用"],
+  ];
+
+  sheet.getRange(2, 1, rows.length, 3).setValues(rows);
+  sheet.getRange("A2:A11")
+    .setBackground("#f5f3ff")
+    .setFontWeight("bold");
+  sheet.getRange("C2:C11")
+    .setFontColor("#64748b")
+    .setFontSize(10);
+  sheet.getRange("A1:C11")
+    .setVerticalAlignment("middle")
+    .setWrap(true);
+  sheet.getRange("B7:B10").insertCheckboxes();
+  sheet.getRange("B2:B5").setBackground("#ffffff");
+  sheet.getRange("B5").setBackground("#ecfeff").setWrap(true);
+}
+
+function getContractManagerData_() {
+  const sheet = getContractManagerSheet_();
+  const reservationId = text_(sheet.getRange("B2").getDisplayValue());
+
+  if (!reservationId) {
+    throw new Error("請先在「合約操作」B2 填入預約編號。");
+  }
+
+  return {
+    sheet,
+    reservationId,
+    lessorName: text_(sheet.getRange("B3").getDisplayValue()),
+    lessorPhone: text_(sheet.getRange("B4").getDisplayValue())
+  };
+}
+
+function writeContractManagerStatus_(message) {
+  const sheet = getContractManagerSheet_();
+  sheet.getRange("B5").setValue(`${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MM/dd HH:mm")} ${message}`);
 }
 
 function ensureContractHeaders_(sheet) {
