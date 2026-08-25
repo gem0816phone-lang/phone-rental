@@ -2211,7 +2211,7 @@ function appendContractInfoTable_(body, rowData) {
     [
       "租借期間",
       `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
-      "實際取還機時間可提前或延後，透過Treads訊息約定"
+      "實際取還機時間可提前或延後，透過Threads訊息約定"
     ]
   ]);
   styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
