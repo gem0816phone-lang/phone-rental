@@ -1902,9 +1902,9 @@ function createContractFiles_(rowData) {
   appendContractFeeTable_(body, rowData);
   appendContractSection_(body, "四、訂金須知");
   appendContractBullets_(body, [
-    "若距離預定時間14天以上，承租人取消預約，訂金全額退還。",
-    "若距離預定時間14天之內，承租人取消預約，訂金不退還，並保留下次租借使用，如有特殊情況請私訊討論。",
-    "若距離預定時間14天以上，出租人取消租借，將退還原價訂金。",
+    "若距離預定時間14天以上，承租人取消預約，將退還訂金全額。",
+    "若距離預定時間14天之內，承租人取消預約，訂金全額不退還，並保留下次租借使用，如有特殊情況請私訊討論。",
+    "若距離預定時間14天以上，出租人取消租借，將退還訂金全額。",
     "若距離預定時間14天之內，出租人取消租借，將退還雙倍訂金。"
   ]);
   appendContractSection_(body, "五、使用規範");
@@ -2203,7 +2203,6 @@ function writeContractResult_(sheet, headers, row, result) {
     "合約文件": result.documentUrl,
     "合約PDF": result.pdfUrl,
     "合約產生時間": result.generatedAt,
-    "簽名連結": signatureUrl,
     "簽名狀態": "待簽署"
   };
 
@@ -2215,8 +2214,25 @@ function writeContractResult_(sheet, headers, row, result) {
     }
   });
 
+  writeSignatureLink_(sheet, headers, row, signatureUrl);
   formatContractSheet_(sheet, headers);
   return signatureUrl;
+}
+
+function writeSignatureLink_(sheet, headers, row, signatureUrl) {
+  const column = getHeaderColumn_(headers, "簽名連結");
+
+  if (!column) {
+    return;
+  }
+
+  const richText = SpreadsheetApp.newRichTextValue()
+    .setText("點我簽名")
+    .setLinkUrl(signatureUrl)
+    .build();
+  sheet.getRange(row, column)
+    .setRichTextValue(richText)
+    .setNote(signatureUrl);
 }
 
 function writeSignatureResult_(sheet, headers, row, signatureFileUrl, signedAt) {
