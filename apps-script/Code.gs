@@ -1872,9 +1872,10 @@ function appendContractInfoTable_(body, rowData) {
   const table = body.appendTable([
     ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
     ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]],
-    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`],
+    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`, "", ""],
     ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
   ]);
+  mergeContractInfoPeriodRow_(table);
   styleContractTable_(table, { headerRows: 0, labelColumns: [0, 2] });
   setContractInfoTableWidths_(table);
 }
@@ -1966,6 +1967,14 @@ function styleContractTable_(table, options) {
         cell.editAsText().setBold(true);
       }
     }
+  }
+}
+
+function mergeContractInfoPeriodRow_(table) {
+  const row = table.getRow(2);
+
+  while (row.getNumCells() > 2) {
+    row.getCell(2).merge();
   }
 }
 
