@@ -134,6 +134,7 @@ const CONTRACT_HEADERS = [
   "簽名連結",
   "簽名狀態",
   "簽名檔案",
+  "簽署完成PDF",
   "簽名時間",
   "簽名金鑰"
 ];
@@ -1256,6 +1257,7 @@ function getSignaturePageData_(reservationId, signatureToken) {
     customerName: plainText_(rowData["承租人姓名"]),
     period: `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
     contractPdfUrl: plainText_(rowData["合約PDF"]),
+    signedPdfUrl: getContractCellLink_(context.sheet, context.headers, context.row, "簽署完成PDF"),
     signatureStatus: plainText_(rowData["簽名狀態"]) || "待簽署",
     signedAt: plainText_(rowData["簽名時間"]),
     token: text_(signatureToken)
@@ -1290,14 +1292,16 @@ function submitSignature(payload) {
     const filename = sanitizeFilename_(`${reservationId} ${customerName} 線上簽名 ${timestamp}.png`);
     const blob = Utilities.newBlob(Utilities.base64Decode(signatureMatch[1]), "image/png", filename);
     const signatureFile = getContractFolder_().createFile(blob);
+    const signedPdfFile = createSignedContractPdf_(context.rowData, signatureFile, signedAt);
 
-    writeSignatureResult_(context.sheet, context.headers, context.row, signatureFile.getUrl(), signedAt);
+    writeSignatureResult_(context.sheet, context.headers, context.row, signatureFile.getUrl(), signedAt, signedPdfFile.getUrl());
 
     return {
       ok: true,
       message: "簽名已送出，請回到對話視窗通知店家。",
       signedAt: Utilities.formatDate(signedAt, Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm"),
-      fileUrl: signatureFile.getUrl()
+      fileUrl: signatureFile.getUrl(),
+      signedPdfUrl: signedPdfFile.getUrl()
     };
   } catch (error) {
     return { ok: false, error: error.message };
@@ -1737,6 +1741,7 @@ function formatContractSheet_(sheet, headers) {
     "簽名連結": 260,
     "簽名狀態": 90,
     "簽名檔案": 260,
+    "簽署完成PDF": 260,
     "簽名時間": 150,
     "簽名金鑰": 220
   };
@@ -2016,7 +2021,9 @@ function createContractFiles_(rowData) {
 
   const documentFile = DriveApp.getFileById(documentId);
   moveFileToFolder_(documentFile, folder);
+  shareContractFile_(documentFile);
   const pdfFile = folder.createFile(documentFile.getAs(MimeType.PDF).setName(`${fileBaseName}.pdf`));
+  shareContractFile_(pdfFile);
 
   return {
     documentUrl: documentFile.getUrl(),
@@ -2166,6 +2173,86 @@ function appendContractSignatureTable_(body, rowData) {
   styleSignatureRow_(table);
 }
 
+function createSignedContractPdf_(rowData, signatureFile, signedAt) {
+  const documentId = getDriveFileIdFromUrl_(rowData["合約文件"]);
+
+  if (!documentId) {
+    throw new Error("找不到合約文件，請先重新產生合約書。");
+  }
+
+  const document = DocumentApp.openById(documentId);
+  const body = document.getBody();
+  const signatureTable = findContractSignatureTable_(body);
+
+  if (!signatureTable) {
+    throw new Error("找不到合約簽名欄位，請先重新產生合約書。");
+  }
+
+  placeSignatureImage_(signatureTable, signatureFile.getBlob());
+  updateSignedAtFooter_(document, signedAt);
+  document.saveAndClose();
+  Utilities.sleep(1000);
+
+  const folder = getContractFolder_();
+  const documentFile = DriveApp.getFileById(documentId);
+  const signedPdfFile = folder.createFile(
+    documentFile.getAs(MimeType.PDF).setName(`${sanitizeFilename_(documentFile.getName())} 已簽署.pdf`)
+  );
+  shareContractFile_(signedPdfFile);
+  return signedPdfFile;
+}
+
+function findContractSignatureTable_(body) {
+  for (let index = body.getNumChildren() - 1; index >= 0; index -= 1) {
+    const child = body.getChild(index);
+
+    if (child.getType() !== DocumentApp.ElementType.TABLE) {
+      continue;
+    }
+
+    const table = child.asTable();
+
+    if (table.getNumRows() < 1 || table.getRow(0).getNumCells() < 2) {
+      continue;
+    }
+
+    const label = table.getRow(0).getCell(0).getText();
+
+    if (/承租人/.test(label) && /簽名/.test(label)) {
+      return table;
+    }
+  }
+
+  return null;
+}
+
+function placeSignatureImage_(table, signatureBlob) {
+  const row = table.getRow(0);
+  const signatureCell = row.getCell(1);
+  signatureCell.clear();
+  signatureCell.setVerticalAlignment(DocumentApp.VerticalAlignment.CENTER);
+  signatureCell.setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(4).setPaddingRight(4);
+
+  const paragraph = signatureCell.appendParagraph("");
+  paragraph.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  paragraph.setSpacingBefore(0).setSpacingAfter(0).setLineSpacing(1);
+  const image = paragraph.appendInlineImage(signatureBlob);
+  image.setWidth(168).setHeight(48);
+}
+
+function updateSignedAtFooter_(document, signedAt) {
+  const footer = document.getFooter() || document.addFooter();
+  footer.clear();
+  const paragraph = footer.appendParagraph(`簽名送出時間：${formatContractSignedAt_(signedAt)}`);
+  paragraph.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+  paragraph.setSpacingBefore(0).setSpacingAfter(0).setLineSpacing(1);
+  paragraph.editAsText().setFontSize(8).setForegroundColor("#1f4d78").setBold(true);
+}
+
+function formatContractSignedAt_(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy年MM月dd日 HH點mm分");
+}
+
 function appendContractBullets_(body, items) {
   items.forEach((item) => {
     const listItem = body.appendListItem(item).setGlyphType(DocumentApp.GlyphType.BULLET);
@@ -2299,24 +2386,32 @@ function writeContractResult_(sheet, headers, row, result) {
   return signatureUrl;
 }
 
-function writeSignatureLink_(sheet, headers, row, signatureUrl) {
-  const column = getHeaderColumn_(headers, "簽名連結");
+function writeSheetLink_(sheet, headers, row, header, url, label) {
+  const column = getHeaderColumn_(headers, header);
 
   if (!column) {
     return;
   }
 
-  const formula = `=HYPERLINK("${escapeSheetFormulaString_(signatureUrl)}","點我簽名")`;
+  const formula = `=HYPERLINK("${escapeSheetFormulaString_(url)}","${escapeSheetFormulaString_(label)}")`;
   sheet.getRange(row, column)
     .setFormula(formula)
-    .setNote(signatureUrl);
+    .setNote(url);
+}
+
+function writeSignatureLink_(sheet, headers, row, signatureUrl) {
+  writeSheetLink_(sheet, headers, row, "簽名連結", signatureUrl, "點我簽名");
+}
+
+function writeSignedPdfLink_(sheet, headers, row, signedPdfUrl) {
+  writeSheetLink_(sheet, headers, row, "簽署完成PDF", signedPdfUrl, "查看已簽署PDF");
 }
 
 function escapeSheetFormulaString_(value) {
   return text_(value).replace(/"/g, '""');
 }
 
-function writeSignatureResult_(sheet, headers, row, signatureFileUrl, signedAt) {
+function writeSignatureResult_(sheet, headers, row, signatureFileUrl, signedAt, signedPdfUrl) {
   const values = {
     "合約狀態": "已簽署",
     "簽名狀態": "已簽署",
@@ -2332,7 +2427,36 @@ function writeSignatureResult_(sheet, headers, row, signatureFileUrl, signedAt) 
     }
   });
 
+  if (signedPdfUrl) {
+    writeSignedPdfLink_(sheet, headers, row, signedPdfUrl);
+  }
+
   formatContractSheet_(sheet, headers);
+}
+
+function getContractCellLink_(sheet, headers, row, header) {
+  const column = getHeaderColumn_(headers, header);
+
+  if (!column) {
+    return "";
+  }
+
+  const range = sheet.getRange(row, column);
+  const note = text_(range.getNote());
+
+  if (note) {
+    return note;
+  }
+
+  const formula = text_(range.getFormula());
+  const match = formula.match(/^=HYPERLINK\("((?:""|[^"])*)"/i);
+
+  if (match) {
+    return match[1].replace(/""/g, '"');
+  }
+
+  const value = text_(range.getDisplayValue());
+  return /^https?:\/\//i.test(value) ? value : "";
 }
 
 function getOrCreateSignatureToken_(sheet, headers, row) {
@@ -2355,6 +2479,30 @@ function getOrCreateSignatureToken_(sheet, headers, row) {
 
 function buildSignatureUrl_(reservationId, signatureToken) {
   return `${SIGNATURE_PAGE_URL}?id=${encodeURIComponent(reservationId)}&token=${encodeURIComponent(signatureToken)}`;
+}
+
+function getDriveFileIdFromUrl_(value) {
+  const url = text_(value);
+
+  if (!url) {
+    return "";
+  }
+
+  const patterns = [
+    /\/d\/([A-Za-z0-9_-]+)/,
+    /[?&]id=([A-Za-z0-9_-]+)/,
+    /^([A-Za-z0-9_-]{20,})$/
+  ];
+
+  for (let index = 0; index < patterns.length; index += 1) {
+    const match = url.match(patterns[index]);
+
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return "";
 }
 
 function getContractFolder_() {
@@ -2382,6 +2530,14 @@ function moveFileToFolder_(file, folder) {
     DriveApp.getRootFolder().removeFile(file);
   } catch (error) {
     console.warn(`Unable to remove contract file from root folder: ${error.message}`);
+  }
+}
+
+function shareContractFile_(file) {
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (error) {
+    console.warn(`Unable to update contract file sharing: ${error.message}`);
   }
 }
 

@@ -211,6 +211,8 @@
 
         <div class="actions">
           <a class="button" id="contractLink" href="#" target="_blank" rel="noopener">查看合約 PDF</a>
+          <a class="button" id="signedPdfLink" href="#" target="_blank" rel="noopener" hidden>查看已簽署 PDF</a>
+          <a class="button" id="signedPdfDownloadLink" href="#" target="_blank" rel="noopener" hidden>下載已簽署 PDF</a>
           <button type="button" id="clearButton" disabled>清除簽名</button>
         </div>
 
@@ -252,6 +254,8 @@
       const clearButton = document.getElementById("clearButton");
       const agree = document.getElementById("agree");
       const contractLink = document.getElementById("contractLink");
+      const signedPdfLink = document.getElementById("signedPdfLink");
+      const signedPdfDownloadLink = document.getElementById("signedPdfDownloadLink");
       let drawing = false;
       let hasSignature = false;
       let signatureData = null;
@@ -281,7 +285,55 @@
           contractLink.style.display = "none";
         }
 
+        setSignedPdfLinks(data.signedPdfUrl);
+
+        if (data.signedPdfUrl) {
+          document.getElementById("signatureStatus").textContent = "已簽署";
+          submitButton.textContent = "已簽署";
+          setControlsEnabled(false);
+          setStatus("這份合約已簽署完成，可查看或下載已簽署 PDF。", "ok");
+          return;
+        }
+
+        submitButton.textContent = "送出簽名";
         setControlsEnabled(true);
+      }
+
+      function setSignedPdfLinks(url) {
+        if (!url) {
+          signedPdfLink.hidden = true;
+          signedPdfDownloadLink.hidden = true;
+          signedPdfLink.removeAttribute("href");
+          signedPdfDownloadLink.removeAttribute("href");
+          return;
+        }
+
+        signedPdfLink.href = url;
+        signedPdfDownloadLink.href = getDriveDownloadUrl(url);
+        signedPdfLink.hidden = false;
+        signedPdfDownloadLink.hidden = false;
+      }
+
+      function getDriveDownloadUrl(url) {
+        const id = getDriveFileId(url);
+        return id ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}` : url;
+      }
+
+      function getDriveFileId(url) {
+        const patterns = [
+          /\/d\/([A-Za-z0-9_-]+)/,
+          /[?&]id=([A-Za-z0-9_-]+)/
+        ];
+
+        for (const pattern of patterns) {
+          const match = String(url || "").match(pattern);
+
+          if (match) {
+            return match[1];
+          }
+        }
+
+        return "";
       }
 
       function buildEndpointUrl(extraParams) {
@@ -320,6 +372,25 @@
         }
 
         return payload;
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => {
+          window.setTimeout(resolve, ms);
+        });
+      }
+
+      async function waitForSignedPdf() {
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          await delay(attempt === 0 ? 1200 : 1800);
+          const data = await loadSignatureData();
+
+          if (data && data.signedPdfUrl) {
+            return data;
+          }
+        }
+
+        return null;
       }
 
       function resizeCanvas() {
@@ -443,8 +514,16 @@
             body: payload
           });
 
+          const updatedData = await waitForSignedPdf();
+
+          if (updatedData) {
+            renderData(updatedData);
+            setStatus("簽名已送出，已簽署 PDF 已產生。", "ok");
+            return;
+          }
+
           document.getElementById("signatureStatus").textContent = "已簽署";
-          setStatus("簽名已送出，請回到對話視窗通知店家。", "ok");
+          setStatus("簽名已送出，已簽署 PDF 產生中；稍後重新開啟此連結即可查看。", "ok");
           submitButton.textContent = "已送出";
         } catch (error) {
           setControlsEnabled(true);
@@ -466,7 +545,9 @@
       loadSignatureData()
         .then((data) => {
           renderData(data);
-          setStatus("");
+          if (!data.signedPdfUrl) {
+            setStatus("");
+          }
         })
         .catch((error) => {
           setControlsEnabled(false);
