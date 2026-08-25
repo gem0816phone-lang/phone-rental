@@ -18,6 +18,7 @@ const rentalItems = [
     daily: 300,
     discountedDaily: 250,
     discountMinDays: 3,
+    minimumRentalDays: 2,
     depositWithId: 1000,
     depositNoId: 10000
   },

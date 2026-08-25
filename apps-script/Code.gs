@@ -12,6 +12,7 @@ const ITEM_LABELS = {
   [ITEM_LENS]: "G2 Ultra 增距鏡 400mm",
   [ITEM_RAYBAN]: "Ray-Ban Meta 智慧眼鏡 方框M"
 };
+const MINIMUM_SINGLE_RENTAL_DAYS = 2;
 const LOCATION_FEE_WAIVER_MIN_DAYS = 3;
 const AVAILABILITY_CACHE_SECONDS = 15;
 const STATUS_OPTIONS = ["待定", "已確認", "已取消", "新預約"];
@@ -3112,11 +3113,31 @@ function validate_(data, requestedDates, requestedItemIds) {
     throw new Error("請至少選擇一天租借日期。");
   }
 
+  validateMinimumRentalDays_(requestedDates, requestedItemIds);
+
   requestedDates.forEach((date) => {
     if (!isValidDateString_(date)) {
       throw new Error(`日期格式不正確：${date}`);
     }
   });
+}
+
+function validateMinimumRentalDays_(requestedDates, requestedItemIds) {
+  if (requestedDates.length >= MINIMUM_SINGLE_RENTAL_DAYS) {
+    return;
+  }
+
+  const hasPhone = requestedItemIds.indexOf(ITEM_PHONE) !== -1;
+  const hasLens = requestedItemIds.indexOf(ITEM_LENS) !== -1;
+  const hasRayBan = requestedItemIds.indexOf(ITEM_RAYBAN) !== -1;
+
+  if (hasLens && !hasPhone) {
+    throw new Error(`[單租] G2 Ultra 增距鏡 此物品單租至少需租借 ${MINIMUM_SINGLE_RENTAL_DAYS} 天`);
+  }
+
+  if (hasRayBan && requestedItemIds.length === 1) {
+    throw new Error(`[單租] Ray-Ban Meta 智慧眼鏡 此物品單租至少需租借 ${MINIMUM_SINGLE_RENTAL_DAYS} 天`);
+  }
 }
 
 function expandDateRange_(startValue, endValue) {
