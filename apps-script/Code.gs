@@ -2211,7 +2211,7 @@ function appendContractInfoTable_(body, rowData) {
     [
       "租借期間",
       `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
-      "實際取還機時間請私訊Treads，訊息約定可提前或延後"
+      "實際取還機時間可提前或延後，透過Treads訊息約定"
     ]
   ]);
   styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
@@ -2475,8 +2475,8 @@ function setContractPeriodTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     setTableRowWidths_(table.getRow(rowIndex), [
       CONTRACT_INFO_LABEL_WIDTH,
-      268,
-      CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH - 268
+      230,
+      CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH - 230
     ]);
   }
 }
