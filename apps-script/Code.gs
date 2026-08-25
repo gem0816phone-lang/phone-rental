@@ -29,6 +29,7 @@ const CONTRACT_PAGE_HEIGHT = 841.89;
 const CONTRACT_TABLE_WIDTH = 520;
 const CONTRACT_LABEL_COLUMN_WIDTH = 170;
 const CONTRACT_VALUE_COLUMN_WIDTH = CONTRACT_TABLE_WIDTH - CONTRACT_LABEL_COLUMN_WIDTH;
+const CONTRACT_FIELD_COLUMN_WIDTH = CONTRACT_TABLE_WIDTH / 2;
 const CONTRACT_ITEM_NUMBER_WIDTH = 38;
 const CONTRACT_ITEM_TEXT_WIDTH = (CONTRACT_TABLE_WIDTH - CONTRACT_ITEM_NUMBER_WIDTH * 2) / 2;
 const CONTRACT_INFO_LABEL_WIDTH = 92;
@@ -1793,10 +1794,14 @@ function createContractFiles_(rowData) {
   appendContractSection_(body, "五、使用規範");
   appendContractBullets_(body, [
     "請愛護設備，禁止改機、禁止拆機、禁止刷機，除了相機功能外，請勿擅自更改手機設置。",
-    "所有照片影片請自行備份，並刪除後歸還，若有登入任何帳號，歸還前請自行登出。"
+    "所有照片影片請自行備份，並刪除後歸還，若有登入任何帳號，歸還前請自行登出。",
+    "歸還時電量請維持在30%以上。"
   ]);
   appendContractSection_(body, "六、設備損壞及遺失");
   appendContractBullets_(body, [
+    "面交時會確認設備皆為正常狀態，並拍照留存紀錄。",
+    "設備非相機功能若有受損，將視情況扣除押金。",
+    "設備相機功能若有受損，需照原購買價格買斷。",
     "若設備遺失需賠償原購買價格，若押金不足以賠償，仍需補足差額。",
     "若設備損壞或遺失造成後續客人無法租借，需賠償後續14天之內已預約客人的訂金。"
   ]);
@@ -1866,16 +1871,14 @@ function appendContractSection_(body, title) {
 
 function appendContractInfoTable_(body, rowData) {
   const table = body.appendTable([
-    ["出租人姓名", rowData["出租人姓名"]],
-    ["出租人電話", rowData["出租人電話"]],
-    ["承租人姓名", rowData["承租人姓名"]],
-    ["承租人電話", rowData["承租人電話"]],
-    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`],
-    ["取機地點", rowData["取機地點"]],
-    ["還機地點", rowData["還機地點"]]
+    [buildContractInfoField_("出租人姓名", rowData["出租人姓名"]), buildContractInfoField_("出租人電話", rowData["出租人電話"])],
+    [buildContractInfoField_("承租人姓名", rowData["承租人姓名"]), buildContractInfoField_("承租人電話", rowData["承租人電話"])],
+    [buildContractInfoField_("租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`), ""],
+    [buildContractInfoField_("取機地點", rowData["取機地點"]), buildContractInfoField_("還機地點", rowData["還機地點"])]
   ]);
-  styleContractTable_(table, { headerRows: 0, labelColumns: [0] });
-  setContractPeriodTableWidths_(table);
+  mergeContractInfoFullRow_(table, 2);
+  styleContractInfoFieldTable_(table);
+  setContractInfoFieldTableWidths_(table);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1944,6 +1947,10 @@ function appendContractFinalConfirmation_(body) {
   appendCompactParagraph_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", CONTRACT_BODY_FONT_SIZE, 0, 0);
 }
 
+function buildContractInfoField_(label, value) {
+  return `${label}\n${plainText_(value)}`;
+}
+
 function styleContractTable_(table, options) {
   const settings = options || {};
   const headerRows = settings.headerRows || 0;
@@ -1968,9 +1975,44 @@ function styleContractTable_(table, options) {
   }
 }
 
-function setContractPeriodTableWidths_(table) {
+function styleContractInfoFieldTable_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
-    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
+    const row = table.getRow(rowIndex);
+
+    for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
+      const cell = row.getCell(cellIndex);
+      const text = cell.editAsText();
+      const cellText = text.getText();
+      const lineBreakIndex = cellText.indexOf("\n");
+
+      cell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(4).setPaddingRight(4);
+      cell.setBackgroundColor("#f8fafc");
+      text.setFontSize(CONTRACT_TABLE_FONT_SIZE).setForegroundColor("#1f4d78").setBold(false);
+
+      if (lineBreakIndex > 0) {
+        text.setBold(0, lineBreakIndex - 1, true);
+      }
+    }
+  }
+}
+
+function mergeContractInfoFullRow_(table, rowIndex) {
+  const row = table.getRow(rowIndex);
+
+  if (row.getNumCells() > 1) {
+    row.getCell(1).merge();
+  }
+}
+
+function setContractInfoFieldTableWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    const row = table.getRow(rowIndex);
+
+    if (row.getNumCells() === 1) {
+      setTableRowWidths_(row, [CONTRACT_TABLE_WIDTH]);
+    } else {
+      setTableRowWidths_(row, [CONTRACT_FIELD_COLUMN_WIDTH, CONTRACT_FIELD_COLUMN_WIDTH]);
+    }
   }
 }
 
