@@ -1091,7 +1091,13 @@ function setupContractManager() {
 function authorizePhoneRentalPermissions() {
   const spreadsheet = getReservationSpreadsheet_();
   const folder = getContractFolder_();
-  showAlert_(`授權確認完成。\n\n試算表：${spreadsheet.getName()}\n合約資料夾：${folder.getName()}`);
+  const testDocument = DocumentApp.create("手機租借授權測試文件");
+  const testDocumentId = testDocument.getId();
+  testDocument.getBody().appendParagraph("這份文件只是用來完成 Google 文件授權，會自動移到垃圾桶。");
+  testDocument.saveAndClose();
+  DriveApp.getFileById(testDocumentId).setTrashed(true);
+
+  showAlert_(`授權確認完成。\n\n試算表：${spreadsheet.getName()}\n合約資料夾：${folder.getName()}\nGoogle 文件權限：已確認`);
 }
 
 function prepareContractDetailFromManager() {
