@@ -110,7 +110,7 @@ const CONTRACT_HEADERS = [
   "取機地點",
   "還機地點",
   "租借設備清單",
-  "總租金",
+  "預估租金",
   "押金",
   "已付訂金",
   "剩餘款項",
@@ -1500,7 +1500,7 @@ function formatContractSheet_(sheet, headers) {
     "取機地點": 130,
     "還機地點": 130,
     "租借設備清單": 360,
-    "總租金": 95,
+    "預估租金": 95,
     "押金": 95,
     "已付訂金": 95,
     "剩餘款項": 95,
@@ -1524,7 +1524,7 @@ function formatContractSheet_(sheet, headers) {
     range.setDataValidation(validation);
   }
 
-  ["總租金", "押金", "已付訂金", "剩餘款項"].forEach((header) => {
+  ["預估租金", "總租金", "押金", "已付訂金", "剩餘款項"].forEach((header) => {
     const column = getHeaderColumn_(headers, header);
 
     if (column) {
@@ -1558,6 +1558,7 @@ function buildContractDetailFromReservation_(reservationData) {
     "取機地點": reservationData["取機地點"],
     "還機地點": reservationData["還機地點"],
     "租借設備清單": getContractEquipmentLines_(itemIds).join("\n"),
+    "預估租金": totalRent || "",
     "總租金": totalRent || "",
     "押金": deposit || "",
     "已付訂金": paidDeposit || "",
@@ -1657,7 +1658,7 @@ function ensureSheetSize_(sheet, minRows, minColumns) {
 }
 
 function shouldRefreshContractDetailValue_(header, currentValue, nextValue) {
-  const autoRefreshHeaders = ["總租金", "押金", "已付訂金", "剩餘款項"];
+  const autoRefreshHeaders = ["預估租金", "總租金", "押金", "已付訂金", "剩餘款項"];
 
   if (autoRefreshHeaders.indexOf(header) === -1) {
     return false;
@@ -1706,7 +1707,7 @@ function validateContractDetail_(rowData) {
     "取機地點",
     "還機地點",
     "租借設備清單",
-    "總租金",
+    "預估租金",
     "押金",
     "已付訂金",
     "剩餘款項"
@@ -1824,13 +1825,17 @@ function appendContractEquipmentTable_(body, rowData) {
 function appendContractFeeTable_(body, rowData) {
   const rows = [
     ["項目", "金額"],
-    ["總租金", `NT. ${formatContractAmount_(rowData["總租金"])} 元`],
+    ["總租金", `NT. ${formatContractAmount_(getContractRentAmount_(rowData))} 元`],
     ["押金", `NT. ${formatContractAmount_(rowData["押金"])} 元`],
     ["已付訂金", `NT. ${formatContractAmount_(rowData["已付訂金"])} 元`],
     ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
   ];
   const table = body.appendTable(rows);
   styleContractTable_(table);
+}
+
+function getContractRentAmount_(rowData) {
+  return rowData["預估租金"] || rowData["總租金"];
 }
 
 function appendContractSignatureTable_(body, rowData) {
