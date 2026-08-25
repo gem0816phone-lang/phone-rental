@@ -1204,50 +1204,50 @@ async function handleSubmit(event) {
     return;
   }
 
-  const payload = new FormData(form);
-  const reservationId = createReservationId(phone);
-  const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
-  const dailyRate = breakdown.lines.reduce((total, line) => total + line.dailyRate, 0);
-  const locations = getSelectedLocations(dates);
-  const locationFee = getTotalLocationFee(dates);
-  const depositAmount = payload.get("depositOption") === getDepositNoIdLabel(packageInfo)
-    ? packageInfo.depositNoId
-    : packageInfo.depositWithId;
-
-  payload.set("reservationId", reservationId);
-  payload.set("selectedItems", selectedItemIds.join(","));
-  payload.set("itemNames", packageInfo.displayName);
-  payload.set("model", packageInfo.id);
-  payload.set("modelName", packageInfo.displayName);
-  payload.set("storage", packageInfo.specSummary);
-  payload.set("dailyPrice", String(dailyRate));
-  payload.set("deposit", String(depositAmount));
-  payload.set("rentalDays", String(dates.length));
-  payload.set("rentalTotal", String(breakdown.total));
-  payload.set("selectedDates", dates.join(","));
-  payload.set("rentalStart", dates[0]);
-  payload.set("rentalEnd", dates[dates.length - 1]);
-  payload.set("pickupLocation", locations.pickup.label);
-  payload.set("pickupFee", String(locations.pickup.fee));
-  payload.set("pickupFeeLabel", locations.pickup.feeLabel);
-  payload.set("dropoffLocation", locations.dropoff.label);
-  payload.set("dropoffFee", String(locations.dropoff.fee));
-  payload.set("dropoffFeeLabel", locations.dropoff.feeLabel);
-  payload.set("locationFee", String(locationFee));
-  payload.set("threadAccount", payload.get("lineId") || "");
-  payload.set("createdAt", new Date().toISOString());
-  payload.set("pageUrl", window.location.href);
-
-  if (payload.get("companyWebsite")) {
-    completeReservation(reservationId);
-    return;
-  }
-
   submitButton.disabled = true;
   submitButton.textContent = "送出中...";
+  let reservationId = createReservationId(phone);
 
   try {
     const endpoint = getAppsScriptUrl();
+    reservationId = endpoint ? await getNextReservationId(phone) : reservationId;
+    const payload = new FormData(form);
+    const breakdown = getRentalBreakdown(packageInfo, dates, { includeLocationFees: true });
+    const dailyRate = breakdown.lines.reduce((total, line) => total + line.dailyRate, 0);
+    const locations = getSelectedLocations(dates);
+    const locationFee = getTotalLocationFee(dates);
+    const depositAmount = payload.get("depositOption") === getDepositNoIdLabel(packageInfo)
+      ? packageInfo.depositNoId
+      : packageInfo.depositWithId;
+
+    payload.set("reservationId", reservationId);
+    payload.set("selectedItems", selectedItemIds.join(","));
+    payload.set("itemNames", packageInfo.displayName);
+    payload.set("model", packageInfo.id);
+    payload.set("modelName", packageInfo.displayName);
+    payload.set("storage", packageInfo.specSummary);
+    payload.set("dailyPrice", String(dailyRate));
+    payload.set("deposit", String(depositAmount));
+    payload.set("rentalDays", String(dates.length));
+    payload.set("rentalTotal", String(breakdown.total));
+    payload.set("selectedDates", dates.join(","));
+    payload.set("rentalStart", dates[0]);
+    payload.set("rentalEnd", dates[dates.length - 1]);
+    payload.set("pickupLocation", locations.pickup.label);
+    payload.set("pickupFee", String(locations.pickup.fee));
+    payload.set("pickupFeeLabel", locations.pickup.feeLabel);
+    payload.set("dropoffLocation", locations.dropoff.label);
+    payload.set("dropoffFee", String(locations.dropoff.fee));
+    payload.set("dropoffFeeLabel", locations.dropoff.feeLabel);
+    payload.set("locationFee", String(locationFee));
+    payload.set("threadAccount", payload.get("lineId") || "");
+    payload.set("createdAt", new Date().toISOString());
+    payload.set("pageUrl", window.location.href);
+
+    if (payload.get("companyWebsite")) {
+      completeReservation(reservationId);
+      return;
+    }
 
     if (!endpoint) {
       saveDemoReservation(payload);
@@ -1813,6 +1813,39 @@ function getAppsScriptUrl() {
   return endpoint;
 }
 
+async function getNextReservationId(phone) {
+  const endpoint = getAppsScriptUrl();
+
+  if (!endpoint) {
+    return createReservationId(phone);
+  }
+
+  try {
+    const url = new URL(endpoint);
+    url.searchParams.set("action", "nextReservationId");
+    url.searchParams.set("phone", phone);
+    url.searchParams.set("cachebust", String(Date.now()));
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      cache: "no-store",
+      credentials: "omit"
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to get reservation id");
+    }
+
+    const payload = await response.json();
+
+    if (payload && payload.ok && payload.reservationId) {
+      return payload.reservationId;
+    }
+  } catch (error) {}
+
+  return createReservationId(phone);
+}
+
 function saveDemoReservation(payload) {
   const reservation = Object.fromEntries(payload.entries());
   const saved = JSON.parse(localStorage.getItem("phoneRentalDemoReservations") || "[]");
@@ -1858,6 +1891,8 @@ function isValidTaiwanMobile(phone) {
   return /^09\d{8}$/.test(phone);
 }
 
-function createReservationId(phone) {
-  return `G${phone.slice(-5)}`;
+function createReservationId(phone, sequence) {
+  const suffix = String(phone || "").replace(/\D/g, "").slice(-5).padStart(5, "0");
+  const serial = String(sequence || 1).padStart(2, "0");
+  return `G${suffix}${serial}`;
 }

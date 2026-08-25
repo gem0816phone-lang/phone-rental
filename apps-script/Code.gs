@@ -279,6 +279,16 @@ function doGet(e) {
     return handleSignatureData_(params);
   }
 
+  if (params.action === "nextReservationId") {
+    return output_(
+      {
+        ok: true,
+        reservationId: getNextReservationIdForPhone_(params.phone)
+      },
+      params.callback
+    );
+  }
+
   if (params.action === "availability") {
     const requestedItemIds = getRequestedItemIds_(params);
     const availability = getCachedAvailabilityByDate_(requestedItemIds);
@@ -341,10 +351,11 @@ function doPost(e) {
 
     const sheet = getReservationSheet_();
     const headers = ensureHeaders_(sheet);
+    const reservationId = getNextReservationIdForPhone_(data.phone, sheet, headers);
     const rowData = {
       "建立時間": new Date(),
       "狀態": "待定",
-      "預約編號": text_(data.reservationId),
+      "預約編號": reservationId,
       "姓名": text_(data.customerName),
       "電話": text_(data.phone),
       "thread 帳號": text_(data.threadAccount || data.lineId),
@@ -374,7 +385,7 @@ function doPost(e) {
     clearAvailabilityCache_();
     notifyTelegramReservation_(rowData, requestedDates);
 
-    return json_({ ok: true, reservationId: data.reservationId });
+    return json_({ ok: true, reservationId });
   } catch (error) {
     return json_({ ok: false, error: error.message });
   } finally {
@@ -510,6 +521,50 @@ function appendReservationRow_(sheet, headers, rowData) {
   sheet.getRange(nextRow, 1, 1, headers.length).setValues([
     headers.map((header) => valueOrBlank_(rowData, header))
   ]);
+}
+
+function getNextReservationIdForPhone_(phone, sheet, headers) {
+  const reservationSheet = sheet || getReservationSheet_({ skipFormat: true });
+  const reservationHeaders = headers || ensureHeaders_(reservationSheet);
+  const base = getReservationIdBaseForPhone_(phone);
+  const maxSequence = getMaxReservationSequenceForBase_(reservationSheet, reservationHeaders, base);
+  return `${base}${String(maxSequence + 1).padStart(2, "0")}`;
+}
+
+function getReservationIdBaseForPhone_(phone) {
+  const suffix = plainText_(phone).replace(/\D/g, "").slice(-5).padStart(5, "0");
+  return `G${suffix}`;
+}
+
+function getMaxReservationSequenceForBase_(sheet, headers, base) {
+  const reservationIdColumn = getHeaderColumn_(headers, "預約編號");
+  const lastRow = sheet.getLastRow();
+
+  if (!reservationIdColumn || lastRow < 2) {
+    return 0;
+  }
+
+  return sheet.getRange(2, reservationIdColumn, lastRow - 1, 1)
+    .getDisplayValues()
+    .reduce((maxSequence, row) => {
+      const reservationId = plainText_(row[0]).replace(/^'/, "");
+
+      if (reservationId === base) {
+        return Math.max(maxSequence, 1);
+      }
+
+      if (reservationId.indexOf(base) !== 0) {
+        return maxSequence;
+      }
+
+      const sequenceText = reservationId.slice(base.length);
+
+      if (!/^\d{2}$/.test(sequenceText)) {
+        return maxSequence;
+      }
+
+      return Math.max(maxSequence, number_(sequenceText));
+    }, 0);
 }
 
 function getRentalDaysFromRowData_(rowData) {
@@ -1270,17 +1325,59 @@ function handleSignatureData_(params) {
 function getSignaturePageData_(reservationId, signatureToken) {
   const context = getSignatureContractContext_(reservationId, signatureToken);
   const rowData = context.rowData;
+  const signedPdfUrl = ensureSignedContractPdf_(context);
 
   return {
     reservationId: plainText_(rowData["預約編號"]),
     customerName: plainText_(rowData["承租人姓名"]),
     period: `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
     contractPdfUrl: plainText_(rowData["合約PDF"]),
-    signedPdfUrl: getContractCellLink_(context.sheet, context.headers, context.row, "簽署完成PDF"),
+    signedPdfUrl,
     signatureStatus: plainText_(rowData["簽名狀態"]) || "待簽署",
     signedAt: plainText_(rowData["簽名時間"]),
     token: text_(signatureToken)
   };
+}
+
+function ensureSignedContractPdf_(context) {
+  const existingSignedPdfUrl = getContractCellLink_(context.sheet, context.headers, context.row, "簽署完成PDF");
+
+  if (existingSignedPdfUrl) {
+    return existingSignedPdfUrl;
+  }
+
+  if (!/已簽署/.test(text_(context.rowData["簽名狀態"]))) {
+    return "";
+  }
+
+  const signatureFileId = getDriveFileIdFromUrl_(context.rowData["簽名檔案"]);
+
+  if (!signatureFileId || !text_(context.rowData["合約文件"])) {
+    return "";
+  }
+
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(5000)) {
+    return "";
+  }
+
+  try {
+    const latestSignedPdfUrl = getContractCellLink_(context.sheet, context.headers, context.row, "簽署完成PDF");
+
+    if (latestSignedPdfUrl) {
+      return latestSignedPdfUrl;
+    }
+
+    const signatureFile = DriveApp.getFileById(signatureFileId);
+    const signedAt = parseContractSignedAt_(context.rowData["簽名時間"]);
+    const signedPdfFile = createSignedContractPdf_(context.rowData, signatureFile, signedAt);
+    writeSignedPdfLink_(context.sheet, context.headers, context.row, signedPdfFile.getUrl());
+    formatContractSheet_(context.sheet, context.headers);
+    return signedPdfFile.getUrl();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function submitSignature(payload) {
@@ -1311,16 +1408,15 @@ function submitSignature(payload) {
     const filename = sanitizeFilename_(`${reservationId} ${customerName} 線上簽名 ${timestamp}.png`);
     const blob = Utilities.newBlob(Utilities.base64Decode(signatureMatch[1]), "image/png", filename);
     const signatureFile = getContractFolder_().createFile(blob);
-    const signedPdfFile = createSignedContractPdf_(context.rowData, signatureFile, signedAt);
 
-    writeSignatureResult_(context.sheet, context.headers, context.row, signatureFile.getUrl(), signedAt, signedPdfFile.getUrl());
+    writeSignatureResult_(context.sheet, context.headers, context.row, signatureFile.getUrl(), signedAt, "");
 
     return {
       ok: true,
       message: "簽名已送出，請回到對話視窗通知店家。",
       signedAt: Utilities.formatDate(signedAt, Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm"),
       fileUrl: signatureFile.getUrl(),
-      signedPdfUrl: signedPdfFile.getUrl()
+      signedPdfUrl: ""
     };
   } catch (error) {
     return { ok: false, error: error.message };
@@ -2255,7 +2351,7 @@ function createSignedContractPdf_(rowData, signatureFile, signedAt) {
   placeSignatureImage_(signatureTable, signatureFile.getBlob());
   updateSignedAtFooter_(document, signedAt);
   document.saveAndClose();
-  Utilities.sleep(1000);
+  Utilities.sleep(300);
 
   const folder = getContractFolder_();
   const documentFile = DriveApp.getFileById(documentId);
@@ -3017,7 +3113,6 @@ function normalizeItemIds_(value) {
 
 function validate_(data, requestedDates, requestedItemIds) {
   const requiredFields = [
-    { label: "預約編號", value: data.reservationId },
     { label: "姓名", value: data.customerName },
     { label: "電話", value: data.phone },
     { label: "thread 帳號", value: data.threadAccount || data.lineId }

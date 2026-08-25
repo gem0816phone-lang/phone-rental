@@ -200,35 +200,35 @@
       <section class="panel">
         <div class="info">
           <div>預約編號</div>
-          <div id="reservationId"></div>
+          <div id="reservationId">載入中</div>
           <div>承租人</div>
-          <div id="customerName"></div>
+          <div id="customerName">載入中</div>
           <div>租借期間</div>
-          <div id="period"></div>
+          <div id="period">載入中</div>
           <div>簽名狀態</div>
-          <div id="signatureStatus"></div>
+          <div id="signatureStatus">載入中</div>
         </div>
 
         <div class="actions">
-          <a class="button" id="contractLink" href="#" target="_blank" rel="noopener">查看合約 PDF</a>
-          <a class="button" id="signedPdfLink" href="#" target="_blank" rel="noopener" hidden>查看已簽署 PDF</a>
-          <a class="button" id="signedPdfDownloadLink" href="#" target="_blank" rel="noopener" hidden>下載已簽署 PDF</a>
+          <a class="button" id="contractLink" href="#" target="_blank" rel="noopener">查看合約PDF</a>
+          <a class="button" id="signedPdfLink" href="#" target="_blank" rel="noopener" hidden>查看已簽屬的PDF</a>
+          <a class="button" id="signedPdfDownloadLink" href="#" target="_blank" rel="noopener" hidden>下載已簽屬的PDF</a>
           <button type="button" id="clearButton" disabled>清除簽名</button>
         </div>
 
-        <div class="signature-wrap">
+        <div class="signature-wrap" id="signatureWrap">
           <div class="canvas-box">
             <canvas id="signatureCanvas"></canvas>
           </div>
           <p class="hint">請用手指或觸控筆在白色區域簽名。</p>
         </div>
 
-        <label class="confirm">
+        <label class="confirm" id="agreementRow">
           <input id="agree" type="checkbox" disabled>
           <span>我已閱讀並同意合約內容，確認以此電子簽名完成簽署。</span>
         </label>
 
-        <div class="actions">
+        <div class="actions" id="submitActions">
           <button type="button" class="primary" id="submitButton" disabled>送出簽名</button>
         </div>
       </section>
@@ -256,6 +256,9 @@
       const contractLink = document.getElementById("contractLink");
       const signedPdfLink = document.getElementById("signedPdfLink");
       const signedPdfDownloadLink = document.getElementById("signedPdfDownloadLink");
+      const signatureWrap = document.getElementById("signatureWrap");
+      const agreementRow = document.getElementById("agreementRow");
+      const submitActions = document.getElementById("submitActions");
       let drawing = false;
       let hasSignature = false;
       let signatureData = null;
@@ -271,6 +274,12 @@
         agree.disabled = !enabled;
       }
 
+      function setSigningSectionVisible(visible) {
+        signatureWrap.hidden = !visible;
+        agreementRow.hidden = !visible;
+        submitActions.hidden = !visible;
+      }
+
       function renderData(data) {
         signatureData = data;
         document.getElementById("reservationId").textContent = data.reservationId || "";
@@ -280,18 +289,21 @@
 
         if (data.contractPdfUrl) {
           contractLink.href = data.contractPdfUrl;
-          contractLink.style.display = "";
+          contractLink.hidden = Boolean(data.signedPdfUrl);
         } else {
-          contractLink.style.display = "none";
+          contractLink.hidden = true;
+          contractLink.removeAttribute("href");
         }
 
         setSignedPdfLinks(data.signedPdfUrl);
+        clearButton.hidden = Boolean(data.signedPdfUrl);
+        setSigningSectionVisible(!data.signedPdfUrl);
 
         if (data.signedPdfUrl) {
           document.getElementById("signatureStatus").textContent = "已簽署";
           submitButton.textContent = "已簽署";
           setControlsEnabled(false);
-          setStatus("這份合約已簽署完成，可查看或下載已簽署 PDF。", "ok");
+          setStatus("這份合約已簽署完成，可查看或下載已簽屬的PDF。", "ok");
           return;
         }
 
@@ -381,8 +393,8 @@
       }
 
       async function waitForSignedPdf() {
-        for (let attempt = 0; attempt < 8; attempt += 1) {
-          await delay(attempt === 0 ? 1200 : 1800);
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          await delay(attempt === 0 ? 600 : 1200);
           const data = await loadSignatureData();
 
           if (data && data.signedPdfUrl) {
@@ -391,6 +403,22 @@
         }
 
         return null;
+      }
+
+      function refreshSignedPdfInBackground() {
+        waitForSignedPdf()
+          .then((updatedData) => {
+            if (updatedData) {
+              renderData(updatedData);
+              setStatus("簽名已送出，已簽屬的PDF已產生。", "ok");
+              return;
+            }
+
+            setStatus("簽名已送出，已簽屬的PDF產生中；稍後重新開啟此連結即可查看。", "ok");
+          })
+          .catch(() => {
+            setStatus("簽名已送出，已簽屬的PDF產生中；稍後重新開啟此連結即可查看。", "ok");
+          });
       }
 
       function resizeCanvas() {
@@ -514,17 +542,13 @@
             body: payload
           });
 
-          const updatedData = await waitForSignedPdf();
-
-          if (updatedData) {
-            renderData(updatedData);
-            setStatus("簽名已送出，已簽署 PDF 已產生。", "ok");
-            return;
-          }
-
           document.getElementById("signatureStatus").textContent = "已簽署";
-          setStatus("簽名已送出，已簽署 PDF 產生中；稍後重新開啟此連結即可查看。", "ok");
           submitButton.textContent = "已送出";
+          setSigningSectionVisible(false);
+          contractLink.hidden = true;
+          clearButton.hidden = true;
+          setStatus("簽名已送出，已簽屬的PDF產生中...", "ok");
+          refreshSignedPdfInBackground();
         } catch (error) {
           setControlsEnabled(true);
           submitButton.textContent = "送出簽名";
