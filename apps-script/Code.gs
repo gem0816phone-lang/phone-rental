@@ -2475,8 +2475,8 @@ function setContractPeriodTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     setTableRowWidths_(table.getRow(rowIndex), [
       CONTRACT_INFO_LABEL_WIDTH,
-      230,
-      CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH - 230
+      200,
+      CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH - 200
     ]);
   }
 }
