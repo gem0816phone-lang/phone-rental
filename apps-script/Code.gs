@@ -142,10 +142,7 @@ const CONTRACT_HEADERS = [
 const CONTRACT_MANAGER_ACTIONS = {
   7: "prepare",
   8: "generate",
-  9: "confirm",
-  10: "cancel",
-  11: "repairSignatureLinks",
-  12: "repairSignedPdfs"
+  9: "repairSignedPdfs"
 };
 
 function onOpen() {
@@ -221,18 +218,6 @@ function onContractManagerEdit_(e) {
       message = generateContractFromManager_();
     }
 
-    if (action === "confirm") {
-      message = updateReservationStatusFromManager_("已確認");
-    }
-
-    if (action === "cancel") {
-      message = updateReservationStatusFromManager_("已取消");
-    }
-
-    if (action === "repairSignatureLinks") {
-      message = repairContractSignatureLinks_();
-    }
-
     if (action === "repairSignedPdfs") {
       message = repairSignedContractPdfs_();
     }
@@ -253,11 +238,7 @@ function addPhoneRentalMenu_() {
     .addSeparator()
     .addItem("建立/更新合約明細", "prepareContractDetail")
     .addItem("產生合約書", "generateContractFromSelectedRow")
-    .addItem("修復簽名連結", "repairContractSignatureLinks")
     .addItem("修復已簽署PDF", "repairSignedContractPdfs")
-    .addSeparator()
-    .addItem("標記已確認", "markSelectedReservationConfirmed")
-    .addItem("標記已取消", "markSelectedReservationCanceled")
     .addToUi();
   } catch (error) {
     Logger.log(`Unable to add phone rental menu: ${error.message}`);
@@ -1184,7 +1165,7 @@ function setupContractManager() {
   getContractSheet_();
   getContractFolder_();
   const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
-  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B12 執行。`);
+    showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B9 執行。`);
 }
 
 function authorizePhoneRentalPermissions() {
@@ -1272,12 +1253,6 @@ function handleContractManagerWebAction_(params) {
       message = prepareContractDetailFromManager_();
     } else if (managerAction === "generate") {
       message = generateContractFromManager_();
-    } else if (managerAction === "confirm") {
-      message = updateReservationStatusFromManager_("已確認");
-    } else if (managerAction === "cancel") {
-      message = updateReservationStatusFromManager_("已取消");
-    } else if (managerAction === "repairSignatureLinks") {
-      message = repairContractSignatureLinks_();
     } else if (managerAction === "repairSignedPdfs") {
       message = repairSignedContractPdfs_();
     } else {
@@ -1736,7 +1711,7 @@ function getContractManagerSheet_() {
 }
 
 function formatContractManagerSheet_(sheet) {
-  ensureSheetSize_(sheet, 13, 3);
+  ensureSheetSize_(sheet, 9, 3);
 
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
@@ -1766,28 +1741,25 @@ function formatContractManagerSheet_(sheet) {
     ["", "", ""],
     ["建立/更新合約明細", "", "先把預約資料帶到「合約明細」給你確認"],
     ["產生合約書", "", "確認「合約明細」後再點，會建立 Google 文件與 PDF"],
-    ["標記已確認", "", "收到訂金、確定出租後再點，日期才會正式鎖住"],
-    ["標記已取消", "", "取消預約時使用"],
-    ["修復簽名連結", "", "把「合約明細」舊資料列的簽名連結重寫成正確連結"],
     ["修復已簽署PDF", "", "已簽署但尚未產生完成 PDF 時使用"],
   ];
 
   sheet.getRange(2, 1, rows.length, 3).setValues(rows);
-  sheet.getRange("A2:A13")
+  sheet.getRange("A2:A9")
     .setBackground("#f5f3ff")
     .setFontWeight("bold");
-  sheet.getRange("C2:C13")
+  sheet.getRange("C2:C9")
     .setFontColor("#64748b")
     .setFontSize(10);
-  sheet.getRange("A1:C13")
+  sheet.getRange("A1:C9")
     .setVerticalAlignment("middle")
     .setWrap(true);
-  sheet.getRange("B7:B12").clearDataValidations();
-  sheet.getRange("B7:B12")
+  sheet.getRange("B7:B9").clearDataValidations();
+  sheet.getRange("B7:B9")
     .clearContent()
     .insertCheckboxes()
     .setValue(false);
-  sheet.getRange("B7:B12")
+  sheet.getRange("B7:B9")
     .setBackground("#eff6ff")
     .setFontColor("#1d4ed8")
     .setFontWeight("bold")
