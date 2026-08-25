@@ -29,7 +29,6 @@ const CONTRACT_PAGE_HEIGHT = 841.89;
 const CONTRACT_TABLE_WIDTH = 520;
 const CONTRACT_LABEL_COLUMN_WIDTH = 170;
 const CONTRACT_VALUE_COLUMN_WIDTH = CONTRACT_TABLE_WIDTH - CONTRACT_LABEL_COLUMN_WIDTH;
-const CONTRACT_FIELD_COLUMN_WIDTH = CONTRACT_TABLE_WIDTH / 2;
 const CONTRACT_ITEM_NUMBER_WIDTH = 38;
 const CONTRACT_ITEM_TEXT_WIDTH = (CONTRACT_TABLE_WIDTH - CONTRACT_ITEM_NUMBER_WIDTH * 2) / 2;
 const CONTRACT_INFO_LABEL_WIDTH = 92;
@@ -1871,14 +1870,14 @@ function appendContractSection_(body, title) {
 
 function appendContractInfoTable_(body, rowData) {
   const table = body.appendTable([
-    [buildContractInfoField_("出租人姓名", rowData["出租人姓名"]), buildContractInfoField_("出租人電話", rowData["出租人電話"])],
-    [buildContractInfoField_("承租人姓名", rowData["承租人姓名"]), buildContractInfoField_("承租人電話", rowData["承租人電話"])],
-    [buildContractInfoField_("租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`), ""],
-    [buildContractInfoField_("取機地點", rowData["取機地點"]), buildContractInfoField_("還機地點", rowData["還機地點"])]
+    ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
+    ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]],
+    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`, "", ""],
+    ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
   ]);
-  mergeContractInfoFullRow_(table, 2);
-  styleContractInfoFieldTable_(table);
-  setContractInfoFieldTableWidths_(table);
+  mergeContractInfoPeriodRow_(table);
+  styleContractTable_(table, { headerRows: 0, labelColumns: [0, 2] });
+  setContractInfoTableWidths_(table);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1947,10 +1946,6 @@ function appendContractFinalConfirmation_(body) {
   appendCompactParagraph_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", CONTRACT_BODY_FONT_SIZE, 0, 0);
 }
 
-function buildContractInfoField_(label, value) {
-  return `${label}\n${plainText_(value)}`;
-}
-
 function styleContractTable_(table, options) {
   const settings = options || {};
   const headerRows = settings.headerRows || 0;
@@ -1975,43 +1970,27 @@ function styleContractTable_(table, options) {
   }
 }
 
-function styleContractInfoFieldTable_(table) {
-  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
-    const row = table.getRow(rowIndex);
+function mergeContractInfoPeriodRow_(table) {
+  const row = table.getRow(2);
 
-    for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
-      const cell = row.getCell(cellIndex);
-      const text = cell.editAsText();
-      const cellText = text.getText();
-      const lineBreakIndex = cellText.indexOf("\n");
-
-      cell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(4).setPaddingRight(4);
-      cell.setBackgroundColor("#f8fafc");
-      text.setFontSize(CONTRACT_TABLE_FONT_SIZE).setForegroundColor("#1f4d78").setBold(false);
-
-      if (lineBreakIndex > 0) {
-        text.setBold(0, lineBreakIndex - 1, true);
-      }
-    }
+  while (row.getNumCells() > 2) {
+    row.getCell(row.getNumCells() - 1).merge();
   }
 }
 
-function mergeContractInfoFullRow_(table, rowIndex) {
-  const row = table.getRow(rowIndex);
-
-  if (row.getNumCells() > 1) {
-    row.getCell(1).merge();
-  }
-}
-
-function setContractInfoFieldTableWidths_(table) {
+function setContractInfoTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     const row = table.getRow(rowIndex);
 
-    if (row.getNumCells() === 1) {
-      setTableRowWidths_(row, [CONTRACT_TABLE_WIDTH]);
+    if (row.getNumCells() === 2) {
+      setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
     } else {
-      setTableRowWidths_(row, [CONTRACT_FIELD_COLUMN_WIDTH, CONTRACT_FIELD_COLUMN_WIDTH]);
+      setTableRowWidths_(row, [
+        CONTRACT_INFO_LABEL_WIDTH,
+        CONTRACT_INFO_VALUE_WIDTH,
+        CONTRACT_INFO_LABEL_WIDTH,
+        CONTRACT_INFO_VALUE_WIDTH
+      ]);
     }
   }
 }
