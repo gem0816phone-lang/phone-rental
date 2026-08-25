@@ -31,6 +31,8 @@ const CONTRACT_LABEL_COLUMN_WIDTH = 170;
 const CONTRACT_VALUE_COLUMN_WIDTH = CONTRACT_TABLE_WIDTH - CONTRACT_LABEL_COLUMN_WIDTH;
 const CONTRACT_ITEM_NUMBER_WIDTH = 38;
 const CONTRACT_ITEM_TEXT_WIDTH = (CONTRACT_TABLE_WIDTH - CONTRACT_ITEM_NUMBER_WIDTH * 2) / 2;
+const CONTRACT_INFO_LABEL_WIDTH = 92;
+const CONTRACT_INFO_VALUE_WIDTH = 168;
 const CONTRACT_BODY_FONT_SIZE = 8;
 const CONTRACT_TABLE_FONT_SIZE = 8;
 const CONTRACT_SECTION_FONT_SIZE = 10;
@@ -1867,10 +1869,15 @@ function appendContractSection_(body, title) {
 }
 
 function appendContractInfoTable_(body, rowData) {
-  appendContractInfoLine_(body, `出租人姓名 ${plainText_(rowData["出租人姓名"])}　出租人電話 ${plainText_(rowData["出租人電話"])}`, 0);
-  appendContractInfoLine_(body, `承租人姓名 ${plainText_(rowData["承租人姓名"])}　承租人電話 ${plainText_(rowData["承租人電話"])}`, 3);
-  appendContractInfoLine_(body, `取機地點 ${plainText_(rowData["取機地點"])}　還機地點 ${plainText_(rowData["還機地點"])}`, 3);
-  appendContractInfoLine_(body, `租借期間 ${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`, 0);
+  const table = body.appendTable([
+    ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
+    ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]],
+    ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]],
+    [`租借期間 ${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`, "", "", ""]
+  ]);
+  mergeContractInfoFullRow_(table, 3);
+  styleContractTable_(table, { headerRows: 0, labelColumns: [0, 2] });
+  setContractInfoTableWidths_(table);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1934,11 +1941,6 @@ function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAft
   return paragraph;
 }
 
-function appendContractInfoLine_(body, text, spacingAfter) {
-  const paragraph = appendCompactParagraph_(body, text, CONTRACT_BODY_FONT_SIZE, 0, spacingAfter);
-  paragraph.editAsText().setForegroundColor("#1f4d78").setBold(true);
-}
-
 function appendContractFinalConfirmation_(body) {
   appendCompactParagraph_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", CONTRACT_BODY_FONT_SIZE, 4, 0);
   appendCompactParagraph_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", CONTRACT_BODY_FONT_SIZE, 0, 0);
@@ -1964,6 +1966,31 @@ function styleContractTable_(table, options) {
         cell.setBackgroundColor(isHeader ? "#e8eef5" : "#f5f6f8");
         cell.editAsText().setBold(true);
       }
+    }
+  }
+}
+
+function mergeContractInfoFullRow_(table, rowIndex) {
+  const row = table.getRow(rowIndex);
+
+  while (row.getNumCells() > 1) {
+    row.getCell(1).merge();
+  }
+}
+
+function setContractInfoTableWidths_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    const row = table.getRow(rowIndex);
+
+    if (row.getNumCells() === 1) {
+      setTableRowWidths_(row, [CONTRACT_TABLE_WIDTH]);
+    } else {
+      setTableRowWidths_(row, [
+        CONTRACT_INFO_LABEL_WIDTH,
+        CONTRACT_INFO_VALUE_WIDTH,
+        CONTRACT_INFO_LABEL_WIDTH,
+        CONTRACT_INFO_VALUE_WIDTH
+      ]);
     }
   }
 }
