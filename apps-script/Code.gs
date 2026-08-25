@@ -125,13 +125,17 @@ function onSpreadsheetOpen_() {
 }
 
 function installPhoneRentalManager() {
-  const spreadsheet = getReservationSpreadsheet_();
+  const spreadsheet = SpreadsheetApp.openById(FALLBACK_SPREADSHEET_ID);
 
-  ScriptApp.getProjectTriggers().forEach((trigger) => {
-    if (trigger.getHandlerFunction() === "onSpreadsheetOpen_") {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
+  try {
+    ScriptApp.getProjectTriggers().forEach((trigger) => {
+      if (trigger.getHandlerFunction() === "onSpreadsheetOpen_") {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+  } catch (error) {
+    Logger.log(`Unable to clear existing phone rental triggers: ${error.message}`);
+  }
 
   ScriptApp.newTrigger("onSpreadsheetOpen_")
     .forSpreadsheet(spreadsheet)
