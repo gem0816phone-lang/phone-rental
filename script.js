@@ -73,7 +73,7 @@ const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
 const availabilityFetchTimeoutMs = 20000;
-const showcaseAssetVersion = "showcase-20260825-73";
+const showcaseAssetVersion = "showcase-20260826-88";
 const showcaseCategories = [
   {
     id: "vivo-x300-ultra",
@@ -113,6 +113,16 @@ const showcaseCategories = [
         seatMap: {
           src: "media/showcase/vivo-x300-ultra-g2-400mm-02-position.png",
           alt: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm 座位圖 02"
+        }
+      },
+      {
+        title: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm 03",
+        src: "media/showcase/vivo-x300-ultra-g2-400mm-03.mp4",
+        poster: "media/showcase/vivo-x300-ultra-g2-400mm-03.jpg",
+        ratio: "9 / 16",
+        seatMap: {
+          src: "media/showcase/vivo-x300-ultra-g2-400mm-03-position.png",
+          alt: "vivo X300 Ultra + G2 Ultra 增距鏡 400mm 座位圖 03"
         }
       }
     ]
