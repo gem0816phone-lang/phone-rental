@@ -2208,7 +2208,11 @@ function appendContractInfoTable_(body, rowData) {
   setContractInfoTableWidths_(infoTable);
 
   const periodTable = body.appendTable([
-    ["租借期間", `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`]
+    [
+      "租借期間",
+      `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
+      "實際取還機時間請私訊Treads，訊息約定可提前或延後"
+    ]
   ]);
   styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
   setContractPeriodTableWidths_(periodTable);
@@ -2469,7 +2473,11 @@ function setContractInfoTableWidths_(table) {
 
 function setContractPeriodTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
-    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
+    setTableRowWidths_(table.getRow(rowIndex), [
+      CONTRACT_INFO_LABEL_WIDTH,
+      268,
+      CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH - 268
+    ]);
   }
 }
 
