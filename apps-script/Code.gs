@@ -1784,21 +1784,21 @@ function createContractFiles_(rowData) {
   appendContractSection_(body, "三、費用清單");
   appendContractFeeTable_(body, rowData);
   appendContractSection_(body, "四、訂金須知");
-  appendContractBullets_(body, ["若取消預約，訂金不退還，並保留下次租借使用。"]);
+  appendContractBullets_(body, [
+    "若距離預定時間14天以上取消預約，訂金全額退還。",
+    "若距離預定時間14天之內取消預約，訂金不退還，並保留下次租借使用，如有特殊情況請私訊討論。",
+    "若距離預定時間14天以上，因其他顧客造成設備損壞導致無法租借，將原價退還訂金並取消預約。",
+    "若距離預定時間14天之內，因其他顧客造成設備損壞導致無法租借，將賠償雙倍訂金並取消預約。"
+  ]);
   appendContractSection_(body, "五、使用規範");
   appendContractBullets_(body, [
-    "請愛護設備，禁止改機、禁止拆機、禁止刷機。",
-    "除了相機功能外，請勿擅自更改手機設置。",
-    "所有照片影片請自行備份，並刪除後歸還。",
-    "若有登入任何帳號，歸還前請自行登出。",
-    "歸還時電量請維持在30%以上。"
+    "請愛護設備，禁止改機、禁止拆機、禁止刷機，除了相機功能外，請勿擅自更改手機設置。",
+    "所有照片影片請自行備份，並刪除後歸還，若有登入任何帳號，歸還前請自行登出。"
   ]);
   appendContractSection_(body, "六、設備損壞及遺失");
   appendContractBullets_(body, [
-    "面交時會確認設備皆為正常狀態，並拍照留存紀錄。",
-    "設備非相機功能若有受損，將視情況扣除押金。",
-    "設備相機功能若有受損，需照原購買價格買斷。",
-    "若設備遺失需賠償原購買價格。"
+    "若設備遺失需賠償原購買價格，若押金不足以賠償，仍需補足差額。",
+    "若設備損壞或遺失造成後續客人無法租借，需賠償後續14天之內已預約客人的訂金。"
   ]);
   appendContractSection_(body, "七、逾期歸還");
   appendContractBullets_(body, [
@@ -1807,8 +1807,12 @@ function createContractFiles_(rowData) {
     "若超時造成後續客人無法租借，需賠償後續客人雙倍承租金額。",
     "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
   ]);
-  appendContractSection_(body, "八、押金返還");
-  appendContractBullets_(body, ["還機時確認設備無異常後，現場退還押金。"]);
+  appendContractSection_(body, "八、押金及證件");
+  appendContractBullets_(body, [
+    "證件正本將於取機時收取，會在現場裝入破壞袋並請您簽名，保證不做其他用途。",
+    "還機時確認設備無異常後，現場退還押金及證件。",
+    "若設備損壞且金額不足以賠償，將扣押證件，並採取法律行動。"
+  ]);
   appendContractSection_(body, "九、簽名確認");
   appendContractSignatureTable_(body, rowData);
   appendContractFinalConfirmation_(body);
@@ -1861,24 +1865,17 @@ function appendContractSection_(body, title) {
 }
 
 function appendContractInfoTable_(body, rowData) {
-  const customerTable = body.appendTable([
-    ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
-    ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]]
+  const table = body.appendTable([
+    ["出租人姓名", rowData["出租人姓名"]],
+    ["出租人電話", rowData["出租人電話"]],
+    ["承租人姓名", rowData["承租人姓名"]],
+    ["承租人電話", rowData["承租人電話"]],
+    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`],
+    ["取機地點", rowData["取機地點"]],
+    ["還機地點", rowData["還機地點"]]
   ]);
-  styleContractTable_(customerTable, { headerRows: 0, labelColumns: [0, 2] });
-  setContractInfoFourColumnWidths_(customerTable);
-
-  const periodTable = body.appendTable([
-    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`]
-  ]);
-  styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
-  setContractPeriodTableWidths_(periodTable);
-
-  const locationTable = body.appendTable([
-    ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
-  ]);
-  styleContractTable_(locationTable, { headerRows: 0, labelColumns: [0, 2] });
-  setContractInfoFourColumnWidths_(locationTable);
+  styleContractTable_(table, { headerRows: 0, labelColumns: [0] });
+  setContractPeriodTableWidths_(table);
 }
 
 function appendContractEquipmentTable_(body, rowData) {
@@ -1904,7 +1901,7 @@ function appendContractFeeTable_(body, rowData) {
     ["項目", "金額"],
     ["總租金", `NT. ${formatContractAmount_(getContractRentAmount_(rowData))} 元`],
     ["押金", `NT. ${formatContractAmount_(rowData["押金"])} 元`],
-    ["已付訂金", `NT. ${formatContractAmount_(rowData["已付訂金"])} 元`],
+    ["訂金", `NT. ${formatContractAmount_(rowData["已付訂金"])} 元`],
     ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
   ];
   const table = body.appendTable(rows);
@@ -1960,7 +1957,7 @@ function styleContractTable_(table, options) {
       const isHeader = rowIndex < headerRows;
       const isLabel = labelColumns.indexOf(cellIndex) !== -1;
 
-      cell.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
+      cell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(4).setPaddingRight(4);
       cell.editAsText().setFontSize(CONTRACT_TABLE_FONT_SIZE).setForegroundColor("#1f4d78");
 
       if (isHeader || isLabel) {
@@ -1968,12 +1965,6 @@ function styleContractTable_(table, options) {
         cell.editAsText().setBold(true);
       }
     }
-  }
-}
-
-function setContractInfoFourColumnWidths_(table) {
-  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
-    setTableRowWidths_(table.getRow(rowIndex), [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH, CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH]);
   }
 }
 
