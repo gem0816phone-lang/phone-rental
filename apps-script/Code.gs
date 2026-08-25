@@ -1,5 +1,6 @@
 const SHEET_NAME = "預約資料";
 const SPREADSHEET_NAME = "手機租借預約資料";
+const FALLBACK_SPREADSHEET_ID = "1B_5iMvLi1d7rehoQUNY8skj6X4D1ZRhct7v54ejnNvM";
 const ITEM_PHONE = "vivo-x300-ultra";
 const ITEM_LENS = "g2-ultra-400mm";
 const ITEM_RAYBAN = "ray-ban-meta";
@@ -15,6 +16,11 @@ const STATUS_OPTIONS = ["待定", "已確認", "已取消", "新預約"];
 const TELEGRAM_BOT_TOKEN_PROPERTY = "TELEGRAM_BOT_TOKEN";
 const TELEGRAM_CHAT_ID_PROPERTY = "TELEGRAM_CHAT_ID";
 const TELEGRAM_SEPARATOR = "-------------------------------------------------";
+const CONTRACT_SHEET_NAME = "合約明細";
+const CONTRACT_FOLDER_NAME = "手機租借合約書";
+const CONTRACT_FOLDER_ID_PROPERTY = "CONTRACT_FOLDER_ID";
+const CONTRACT_LESSOR_NAME_PROPERTY = "CONTRACT_LESSOR_NAME";
+const CONTRACT_LESSOR_PHONE_PROPERTY = "CONTRACT_LESSOR_PHONE";
 const TELEGRAM_ITEM_CONFIGS = {
   [ITEM_PHONE]: {
     title: "[單租] vivo X300 Ultra",
@@ -88,6 +94,69 @@ const HIDDEN_HEADERS = [
   "來源網址",
   "備註"
 ];
+
+const CONTRACT_HEADERS = [
+  "預約編號",
+  "合約狀態",
+  "出租人姓名",
+  "出租人電話",
+  "承租人姓名",
+  "承租人電話",
+  "租借開始時間",
+  "租借結束時間",
+  "取機地點",
+  "還機地點",
+  "租借設備清單",
+  "總租金",
+  "押金",
+  "已付訂金",
+  "剩餘款項",
+  "合約文件",
+  "合約PDF",
+  "合約產生時間"
+];
+
+function onOpen() {
+  addPhoneRentalMenu_();
+}
+
+function onSpreadsheetOpen_() {
+  addPhoneRentalMenu_();
+}
+
+function installPhoneRentalManager() {
+  const spreadsheet = getReservationSpreadsheet_();
+
+  ScriptApp.getProjectTriggers().forEach((trigger) => {
+    if (trigger.getHandlerFunction() === "onSpreadsheetOpen_") {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger("onSpreadsheetOpen_")
+    .forSpreadsheet(spreadsheet)
+    .onOpen()
+    .create();
+
+  return `已安裝管理選單觸發器：${spreadsheet.getUrl()}`;
+}
+
+function addPhoneRentalMenu_() {
+  try {
+    SpreadsheetApp.getUi()
+    .createMenu("手機租借管理")
+    .addItem("整理預約表", "repairReservationSheet")
+    .addSeparator()
+    .addItem("建立/更新合約明細", "prepareContractDetail")
+    .addItem("產生合約書", "generateContractFromSelectedRow")
+    .addSeparator()
+    .addItem("標記已確認", "markSelectedReservationConfirmed")
+    .addItem("標記已取消", "markSelectedReservationCanceled")
+    .addToUi();
+  } catch (error) {
+    Logger.log(`Unable to add phone rental menu: ${error.message}`);
+  }
+}
 
 function doGet(e) {
   const params = (e && e.parameter) || {};
@@ -593,10 +662,22 @@ function getHeaderColumn_(headers, header) {
 
 function getReservationSpreadsheet_() {
   const properties = PropertiesService.getScriptProperties();
-  const spreadsheetId = properties.getProperty("SPREADSHEET_ID");
+  const spreadsheetId = properties.getProperty("SPREADSHEET_ID") || FALLBACK_SPREADSHEET_ID;
 
   if (spreadsheetId) {
-    return SpreadsheetApp.openById(spreadsheetId);
+    try {
+      const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+      properties.setProperty("SPREADSHEET_ID", spreadsheet.getId());
+      return spreadsheet;
+    } catch (error) {
+      if (spreadsheetId !== FALLBACK_SPREADSHEET_ID && FALLBACK_SPREADSHEET_ID) {
+        const spreadsheet = SpreadsheetApp.openById(FALLBACK_SPREADSHEET_ID);
+        properties.setProperty("SPREADSHEET_ID", spreadsheet.getId());
+        return spreadsheet;
+      }
+
+      properties.deleteProperty("SPREADSHEET_ID");
+    }
   }
 
   const spreadsheet = SpreadsheetApp.create(SPREADSHEET_NAME);
@@ -869,6 +950,646 @@ function repairReservationSheet() {
   const headers = ensureHeaders_(sheet);
   formatReservationSheet_(sheet, headers);
   return "ok";
+}
+
+function prepareContractDetail() {
+  try {
+    const context = getSelectedReservationContext_();
+    const contractSheet = getContractSheet_();
+    const contractHeaders = ensureContractHeaders_(contractSheet);
+    const detail = buildContractDetailFromReservation_(context.rowData);
+    const row = upsertContractDetail_(contractSheet, contractHeaders, detail);
+
+    contractSheet.activate();
+    contractSheet.setActiveRange(contractSheet.getRange(row, 1, 1, contractHeaders.length));
+    showAlert_(`已建立/更新合約明細。\n請確認「合約明細」第 ${row} 列後，再按「產生合約書」。`);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function generateContractFromSelectedRow() {
+  try {
+    const context = getSelectedContractContext_();
+    validateContractDetail_(context.rowData);
+    const result = createContractFiles_(context.rowData);
+    writeContractResult_(context.sheet, context.headers, context.row, result);
+    showAlert_(`合約書已產生。\n\nGoogle 文件：${result.documentUrl}\nPDF：${result.pdfUrl}`);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function markSelectedReservationConfirmed() {
+  updateSelectedReservationStatus_("已確認");
+}
+
+function markSelectedReservationCanceled() {
+  updateSelectedReservationStatus_("已取消");
+}
+
+function updateSelectedReservationStatus_(status) {
+  try {
+    const context = getSelectedReservationContextFromAnySheet_();
+    const statusColumn = getHeaderColumn_(context.headers, "狀態");
+
+    if (!statusColumn) {
+      throw new Error("找不到「狀態」欄位。");
+    }
+
+    context.sheet.getRange(context.row, statusColumn).setValue(status);
+    clearAvailabilityCache_();
+    showAlert_(`預約 ${context.rowData["預約編號"] || ""} 已標記為「${status}」。`);
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
+function getSelectedReservationContext_() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!spreadsheet) {
+    throw new Error("請先在試算表中選擇一筆預約資料。");
+  }
+
+  const sheet = spreadsheet.getActiveSheet();
+
+  if (!sheet || sheet.getName() !== SHEET_NAME) {
+    throw new Error(`請先到「${SHEET_NAME}」工作表選擇要處理的預約列。`);
+  }
+
+  return getSelectedRowContext_(sheet);
+}
+
+function getSelectedReservationContextFromAnySheet_() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!spreadsheet) {
+    throw new Error("請先在試算表中選擇一筆資料。");
+  }
+
+  const activeSheet = spreadsheet.getActiveSheet();
+
+  if (activeSheet.getName() === SHEET_NAME) {
+    return getSelectedRowContext_(activeSheet);
+  }
+
+  if (activeSheet.getName() === CONTRACT_SHEET_NAME) {
+    const contractContext = getSelectedRowContext_(activeSheet);
+    const reservationId = contractContext.rowData["預約編號"];
+    return getReservationContextById_(reservationId);
+  }
+
+  throw new Error(`請先到「${SHEET_NAME}」或「${CONTRACT_SHEET_NAME}」工作表選擇一列。`);
+}
+
+function getSelectedContractContext_() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!spreadsheet) {
+    throw new Error("請先在試算表中選擇一筆合約明細。");
+  }
+
+  const activeSheet = spreadsheet.getActiveSheet();
+
+  if (activeSheet.getName() === CONTRACT_SHEET_NAME) {
+    return getSelectedRowContext_(activeSheet);
+  }
+
+  if (activeSheet.getName() === SHEET_NAME) {
+    const reservationContext = getSelectedRowContext_(activeSheet);
+    const contractSheet = getContractSheet_();
+    const contractHeaders = ensureContractHeaders_(contractSheet);
+    const contractRow = findRowByHeaderValue_(contractSheet, contractHeaders, "預約編號", reservationContext.rowData["預約編號"]);
+
+    if (!contractRow) {
+      const detail = buildContractDetailFromReservation_(reservationContext.rowData);
+      const row = upsertContractDetail_(contractSheet, contractHeaders, detail);
+      contractSheet.activate();
+      contractSheet.setActiveRange(contractSheet.getRange(row, 1, 1, contractHeaders.length));
+      throw new Error(`已先建立「合約明細」第 ${row} 列。請確認細項後，再按一次「產生合約書」。`);
+    }
+
+    return getRowContext_(contractSheet, contractRow);
+  }
+
+  throw new Error(`請先到「${SHEET_NAME}」或「${CONTRACT_SHEET_NAME}」工作表選擇一列。`);
+}
+
+function getSelectedRowContext_(sheet) {
+  const range = sheet.getActiveRange();
+
+  if (!range || range.getRow() < 2) {
+    throw new Error("請選擇資料列，不要選標題列。");
+  }
+
+  return getRowContext_(sheet, range.getRow());
+}
+
+function getRowContext_(sheet, row) {
+  const headers = getSheetHeaders_(sheet);
+  const values = sheet.getRange(row, 1, 1, headers.length).getDisplayValues()[0];
+  const rowData = {};
+
+  headers.forEach((header, index) => {
+    if (header) {
+      rowData[header] = values[index];
+    }
+  });
+
+  return { sheet, headers, row, rowData };
+}
+
+function getReservationContextById_(reservationId) {
+  const sheet = getReservationSheet_();
+  const headers = ensureHeaders_(sheet);
+  const row = findRowByHeaderValue_(sheet, headers, "預約編號", reservationId);
+
+  if (!row) {
+    throw new Error(`找不到預約編號：${reservationId}`);
+  }
+
+  return getRowContext_(sheet, row);
+}
+
+function getSheetHeaders_(sheet) {
+  return sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getDisplayValues()[0].map(canonicalHeader_);
+}
+
+function getContractSheet_() {
+  const spreadsheet = getReservationSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(CONTRACT_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(CONTRACT_SHEET_NAME);
+  }
+
+  ensureContractHeaders_(sheet);
+  return sheet;
+}
+
+function ensureContractHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(CONTRACT_HEADERS);
+    formatContractSheet_(sheet, CONTRACT_HEADERS);
+    return CONTRACT_HEADERS.slice();
+  }
+
+  const currentHeaders = getSheetHeaders_(sheet);
+  const missingHeaders = CONTRACT_HEADERS.filter((header) => currentHeaders.indexOf(header) === -1);
+  const headers = currentHeaders.concat(missingHeaders);
+
+  if (missingHeaders.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  formatContractSheet_(sheet, headers);
+  return headers;
+}
+
+function formatContractSheet_(sheet, headers) {
+  const lastRow = Math.max(sheet.getLastRow(), 1);
+  const lastColumn = headers.length;
+
+  sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(1);
+  sheet.getRange(1, 1, 1, lastColumn)
+    .setBackground("#1d4ed8")
+    .setFontColor("#ffffff")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center");
+  sheet.getRange(1, 1, lastRow, lastColumn)
+    .setVerticalAlignment("middle")
+    .setWrap(true);
+
+  const widths = {
+    "預約編號": 120,
+    "合約狀態": 90,
+    "出租人姓名": 120,
+    "出租人電話": 120,
+    "承租人姓名": 120,
+    "承租人電話": 120,
+    "租借開始時間": 180,
+    "租借結束時間": 180,
+    "取機地點": 130,
+    "還機地點": 130,
+    "租借設備清單": 360,
+    "總租金": 95,
+    "押金": 95,
+    "已付訂金": 95,
+    "剩餘款項": 95,
+    "合約文件": 260,
+    "合約PDF": 260,
+    "合約產生時間": 150
+  };
+
+  headers.forEach((header, index) => {
+    sheet.setColumnWidth(index + 1, widths[header] || 120);
+  });
+
+  const statusColumn = getHeaderColumn_(headers, "合約狀態");
+
+  if (statusColumn) {
+    const range = sheet.getRange(2, statusColumn, Math.max(sheet.getMaxRows() - 1, 1), 1);
+    const validation = SpreadsheetApp.newDataValidation()
+      .requireValueInList(["草稿", "已產生", "已簽署", "取消"], true)
+      .setAllowInvalid(false)
+      .build();
+    range.setDataValidation(validation);
+  }
+
+  ["總租金", "押金", "已付訂金", "剩餘款項"].forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (column) {
+      sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("#,##0");
+    }
+  });
+
+  const generatedAtColumn = getHeaderColumn_(headers, "合約產生時間");
+
+  if (generatedAtColumn) {
+    sheet.getRange(2, generatedAtColumn, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("yyyy-mm-dd hh:mm");
+  }
+}
+
+function buildContractDetailFromReservation_(reservationData) {
+  const dates = getDatesFromRowData_(reservationData);
+  const itemIds = normalizeItemIds_(reservationData["物品 ID"]);
+  const totalRent = number_(reservationData["預估租金"]) + number_(reservationData["地點加價"]);
+  const deposit = number_(reservationData["押金"]);
+  const paidDeposit = getDefaultPaidDeposit_(reservationData);
+
+  return {
+    "預約編號": reservationData["預約編號"],
+    "合約狀態": "草稿",
+    "出租人姓名": plainText_(PropertiesService.getScriptProperties().getProperty(CONTRACT_LESSOR_NAME_PROPERTY)),
+    "出租人電話": plainText_(PropertiesService.getScriptProperties().getProperty(CONTRACT_LESSOR_PHONE_PROPERTY)),
+    "承租人姓名": reservationData["姓名"],
+    "承租人電話": reservationData["電話"],
+    "租借開始時間": dates.length ? formatContractDateTime_(dates[0]) : "",
+    "租借結束時間": dates.length ? formatContractDateTime_(addDaysToDateString_(dates[dates.length - 1], 1)) : "",
+    "取機地點": reservationData["取機地點"],
+    "還機地點": reservationData["還機地點"],
+    "租借設備清單": getContractEquipmentLines_(itemIds).join("\n"),
+    "總租金": totalRent || "",
+    "押金": deposit || "",
+    "已付訂金": paidDeposit || "",
+    "剩餘款項": totalRent || deposit || paidDeposit ? Math.max(totalRent + deposit - paidDeposit, 0) : "",
+    "合約文件": "",
+    "合約PDF": "",
+    "合約產生時間": ""
+  };
+}
+
+function getDatesFromRowData_(rowData) {
+  const selectedDates = text_(rowData["租借日期"]);
+
+  if (selectedDates) {
+    return normalizeDateList_(selectedDates.split(/[,，\s]+/));
+  }
+
+  return expandDateRange_(rowData["租借開始日期"], rowData["租借結束日期"]);
+}
+
+function getDefaultPaidDeposit_(rowData) {
+  return /免證|不用證|不押證/i.test(text_(rowData["押金方式"])) ? 1000 : 500;
+}
+
+function getContractEquipmentLines_(itemIds) {
+  const itemSet = toSet_(itemIds || []);
+  const lines = [];
+
+  if (itemSet[ITEM_PHONE] && itemSet[ITEM_LENS]) {
+    TELEGRAM_COMBO_CONFIG.details.forEach((detail) => lines.push(detail));
+  } else {
+    if (itemSet[ITEM_PHONE]) {
+      lines.push(ITEM_LABELS[ITEM_PHONE]);
+    }
+
+    if (itemSet[ITEM_LENS]) {
+      lines.push(ITEM_LABELS[ITEM_LENS]);
+    }
+  }
+
+  if (itemSet[ITEM_RAYBAN]) {
+    lines.push(ITEM_LABELS[ITEM_RAYBAN]);
+  }
+
+  return lines;
+}
+
+function upsertContractDetail_(sheet, headers, detail) {
+  const reservationId = detail["預約編號"];
+
+  if (!reservationId) {
+    throw new Error("這筆預約沒有預約編號，無法建立合約明細。");
+  }
+
+  let row = findRowByHeaderValue_(sheet, headers, "預約編號", reservationId);
+  const isNew = !row;
+
+  if (!row) {
+    row = Math.max(sheet.getLastRow() + 1, 2);
+  }
+
+  if (row > sheet.getMaxRows()) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), row - sheet.getMaxRows());
+  }
+
+  const currentValues = isNew
+    ? CONTRACT_HEADERS.map(() => "")
+    : sheet.getRange(row, 1, 1, headers.length).getDisplayValues()[0];
+  const nextValues = headers.map((header, index) => {
+    const currentValue = currentValues[index];
+
+    if (!isNew && text_(currentValue)) {
+      return currentValue;
+    }
+
+    return valueOrBlank_(detail, header);
+  });
+
+  sheet.getRange(row, 1, 1, headers.length).setValues([nextValues]);
+  formatContractSheet_(sheet, headers);
+  return row;
+}
+
+function findRowByHeaderValue_(sheet, headers, header, value) {
+  const column = getHeaderColumn_(headers, header);
+  const targetValue = text_(value);
+  const dataRows = sheet.getLastRow() - 1;
+
+  if (!column || !targetValue || dataRows < 1) {
+    return 0;
+  }
+
+  const values = sheet.getRange(2, column, dataRows, 1).getDisplayValues();
+
+  for (let index = 0; index < values.length; index += 1) {
+    if (text_(values[index][0]) === targetValue) {
+      return index + 2;
+    }
+  }
+
+  return 0;
+}
+
+function validateContractDetail_(rowData) {
+  const requiredHeaders = [
+    "出租人姓名",
+    "出租人電話",
+    "承租人姓名",
+    "承租人電話",
+    "租借開始時間",
+    "租借結束時間",
+    "取機地點",
+    "還機地點",
+    "租借設備清單",
+    "總租金",
+    "押金",
+    "已付訂金",
+    "剩餘款項"
+  ];
+  const missing = requiredHeaders.filter((header) => !text_(rowData[header]));
+
+  if (missing.length) {
+    throw new Error(`合約明細尚未填完整：${missing.join("、")}`);
+  }
+}
+
+function createContractFiles_(rowData) {
+  const reservationId = text_(rowData["預約編號"]) || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmm");
+  const fileBaseName = sanitizeFilename_(`${reservationId} 設備租借合約書`);
+  const folder = getContractFolder_();
+  const document = DocumentApp.create(fileBaseName);
+  const documentId = document.getId();
+  const body = document.getBody();
+
+  body.setAttributes({
+    [DocumentApp.Attribute.FONT_FAMILY]: "Microsoft JhengHei",
+    [DocumentApp.Attribute.FONT_SIZE]: 10.5,
+    [DocumentApp.Attribute.FOREGROUND_COLOR]: "#1f2937"
+  });
+
+  appendContractTitle_(body);
+  appendContractSection_(body, "一、基本資料");
+  appendContractInfoTable_(body, rowData);
+  appendContractSection_(body, "二、租借設備清單");
+  appendContractEquipmentTable_(body, rowData);
+  appendContractSection_(body, "三、費用清單");
+  appendContractFeeTable_(body, rowData);
+  appendContractSection_(body, "四、訂金須知");
+  body.appendParagraph("若取消預約，訂金不退還，並保留下次租借使用。");
+  appendContractSection_(body, "五、使用規範");
+  appendContractBullets_(body, [
+    "請愛護設備，禁止改機、禁止拆機、禁止刷機。",
+    "除了相機功能外，請勿擅自更改手機設置。",
+    "所有照片影片請自行備份，並刪除後歸還。",
+    "若有登入任何帳號，歸還前請自行登出。",
+    "歸還時電量請維持在30%以上。"
+  ]);
+  appendContractSection_(body, "六、設備損壞及遺失");
+  appendContractBullets_(body, [
+    "面交時會確認設備皆為正常狀態，並拍照留存紀錄。",
+    "設備非相機功能若有受損，將視情況扣除押金。",
+    "設備相機功能若有受損，需照原購買價格買斷。",
+    "若設備遺失需賠償原購買價格。"
+  ]);
+  appendContractSection_(body, "七、逾期歸還");
+  appendContractBullets_(body, [
+    "超時每一小時扣除押金100元。",
+    "超時三小時以上視同增加一天租借時間。",
+    "若超時造成後續客人無法租借，需賠償後續客人雙倍承租金額。",
+    "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
+  ]);
+  appendContractSection_(body, "八、押金返還");
+  body.appendParagraph("還機時確認設備無異常後，現場退還押金。");
+  appendContractSection_(body, "九、簽名確認");
+  body.appendParagraph("承租人確認已閱讀、理解並同意本合約全部內容，且同意依本合約約定租借、使用及歸還設備。");
+  appendContractSignatureTable_(body, rowData);
+
+  document.saveAndClose();
+
+  const documentFile = DriveApp.getFileById(documentId);
+  moveFileToFolder_(documentFile, folder);
+  const pdfFile = folder.createFile(documentFile.getAs(MimeType.PDF).setName(`${fileBaseName}.pdf`));
+
+  return {
+    documentUrl: documentFile.getUrl(),
+    pdfUrl: pdfFile.getUrl(),
+    generatedAt: new Date()
+  };
+}
+
+function appendContractTitle_(body) {
+  const title = body.appendParagraph("設備租借合約書");
+  title.setHeading(DocumentApp.ParagraphHeading.TITLE)
+    .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  title.editAsText().setForegroundColor("#111827").setFontSize(20).setBold(true);
+
+  const subtitle = body.appendParagraph("@gem0816phone 設備出租");
+  subtitle.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  subtitle.editAsText().setForegroundColor("#5a6778").setFontSize(10);
+}
+
+function appendContractSection_(body, title) {
+  const paragraph = body.appendParagraph(title)
+    .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  paragraph.editAsText().setForegroundColor("#1f4d78").setFontSize(13).setBold(true);
+}
+
+function appendContractInfoTable_(body, rowData) {
+  const table = body.appendTable([
+    ["出租人姓名", rowData["出租人姓名"], "出租人電話", rowData["出租人電話"]],
+    ["承租人姓名", rowData["承租人姓名"], "承租人電話", rowData["承租人電話"]],
+    ["租借期間", `${rowData["租借開始時間"]} 至 ${rowData["租借結束時間"]}`, "", ""],
+    ["取機地點", rowData["取機地點"], "還機地點", rowData["還機地點"]]
+  ]);
+  styleContractTable_(table);
+}
+
+function appendContractEquipmentTable_(body, rowData) {
+  const equipmentLines = splitLines_(rowData["租借設備清單"]);
+  const rows = [["項次", "設備 / 配件"]];
+
+  equipmentLines.forEach((line, index) => {
+    rows.push([String(index + 1), line]);
+  });
+
+  const table = body.appendTable(rows);
+  styleContractTable_(table);
+}
+
+function appendContractFeeTable_(body, rowData) {
+  const rows = [
+    ["項目", "金額"],
+    ["總租金", `NT. ${formatContractAmount_(rowData["總租金"])} 元`],
+    ["押金", `NT. ${formatContractAmount_(rowData["押金"])} 元`],
+    ["已付訂金", `NT. ${formatContractAmount_(rowData["已付訂金"])} 元`],
+    ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
+  ];
+  const table = body.appendTable(rows);
+  styleContractTable_(table);
+}
+
+function appendContractSignatureTable_(body, rowData) {
+  const table = body.appendTable([
+    ["承租人姓名", rowData["承租人姓名"]],
+    ["簽署日期時間", "__________ 年 _____ 月 _____ 日 _____ 點 _____ 分"],
+    ["承租人簽名", "\n\n"]
+  ]);
+  styleContractTable_(table);
+}
+
+function appendContractBullets_(body, items) {
+  items.forEach((item) => {
+    const listItem = body.appendListItem(item).setGlyphType(DocumentApp.GlyphType.BULLET);
+    listItem.editAsText().setFontSize(10.5);
+  });
+}
+
+function styleContractTable_(table) {
+  for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
+    const row = table.getRow(rowIndex);
+
+    for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
+      const cell = row.getCell(cellIndex);
+      cell.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(6).setPaddingRight(6);
+
+      if (rowIndex === 0 || cellIndex % 2 === 0) {
+        cell.setBackgroundColor(rowIndex === 0 ? "#e8eef5" : "#f5f6f8");
+        cell.editAsText().setBold(true);
+      }
+    }
+  }
+}
+
+function writeContractResult_(sheet, headers, row, result) {
+  const values = {
+    "合約狀態": "已產生",
+    "合約文件": result.documentUrl,
+    "合約PDF": result.pdfUrl,
+    "合約產生時間": result.generatedAt
+  };
+
+  Object.keys(values).forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (column) {
+      sheet.getRange(row, column).setValue(values[header]);
+    }
+  });
+
+  formatContractSheet_(sheet, headers);
+}
+
+function getContractFolder_() {
+  const properties = PropertiesService.getScriptProperties();
+  const folderId = properties.getProperty(CONTRACT_FOLDER_ID_PROPERTY);
+
+  if (folderId) {
+    try {
+      return DriveApp.getFolderById(folderId);
+    } catch (error) {
+      properties.deleteProperty(CONTRACT_FOLDER_ID_PROPERTY);
+    }
+  }
+
+  const folders = DriveApp.getFoldersByName(CONTRACT_FOLDER_NAME);
+  const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(CONTRACT_FOLDER_NAME);
+  properties.setProperty(CONTRACT_FOLDER_ID_PROPERTY, folder.getId());
+  return folder;
+}
+
+function moveFileToFolder_(file, folder) {
+  folder.addFile(file);
+
+  try {
+    DriveApp.getRootFolder().removeFile(file);
+  } catch (error) {
+    console.warn(`Unable to remove contract file from root folder: ${error.message}`);
+  }
+}
+
+function formatContractDateTime_(dateString) {
+  const normalized = normalizeDateValue_(dateString);
+
+  if (!isValidDateString_(normalized)) {
+    return "";
+  }
+
+  const [year, month, day] = normalized.split("-");
+  return `${year}年${month}月${day}日 12點00分`;
+}
+
+function splitLines_(value) {
+  return plainText_(value).split(/\r?\n+/).map((line) => line.trim()).filter(Boolean);
+}
+
+function formatContractAmount_(value) {
+  const numericValue = Number(String(value).replace(/,/g, ""));
+
+  if (!Number.isFinite(numericValue)) {
+    return plainText_(value);
+  }
+
+  return Utilities.formatString("%s", Math.round(numericValue)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function sanitizeFilename_(value) {
+  return plainText_(value).replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function showAlert_(message) {
+  try {
+    SpreadsheetApp.getUi().alert(message);
+  } catch (error) {
+    Logger.log(message);
+  }
 }
 
 function getBookedDates_(targetItemIds) {
