@@ -565,31 +565,38 @@ function applyRowFormats_(sheet, headers, row) {
 }
 
 function repairPhoneColumn_(sheet, headers) {
-  const phoneColumn = getHeaderColumn_(headers, "電話");
   const dataRows = sheet.getLastRow() - 1;
 
-  if (!phoneColumn || dataRows < 1) {
+  if (dataRows < 1) {
     return;
   }
 
-  const range = sheet.getRange(2, phoneColumn, dataRows, 1);
-  const values = range.getDisplayValues();
-  let hasChanges = false;
-  const nextValues = values.map(([value]) => {
-    const normalized = normalizePhoneForSheet_(value);
+  getPhoneTextHeaders_().forEach((header) => {
+    const phoneColumn = getHeaderColumn_(headers, header);
 
-    if (normalized !== value) {
-      hasChanges = true;
+    if (!phoneColumn) {
+      return;
     }
 
-    return [normalized];
+    const range = sheet.getRange(2, phoneColumn, dataRows, 1);
+    const values = range.getDisplayValues();
+    let hasChanges = false;
+    const nextValues = values.map(([value]) => {
+      const normalized = normalizePhoneForSheet_(value);
+
+      if (normalized !== value) {
+        hasChanges = true;
+      }
+
+      return [normalized];
+    });
+
+    range.setNumberFormat("@");
+
+    if (hasChanges) {
+      range.setValues(nextValues);
+    }
   });
-
-  range.setNumberFormat("@");
-
-  if (hasChanges) {
-    range.setValues(nextValues);
-  }
 }
 
 function normalizePhoneForSheet_(value) {
@@ -647,7 +654,11 @@ function getDateFormatHeaders_() {
 }
 
 function getTextFormatHeaders_() {
-  return ["預約編號", "電話", "thread 帳號", "取機加價", "還機加價", "押金方式", "租借日期", "物品 ID"];
+  return ["預約編號", "電話", "出租人電話", "承租人電話", "thread 帳號", "取機加價", "還機加價", "押金方式", "租借日期", "物品 ID"];
+}
+
+function getPhoneTextHeaders_() {
+  return ["電話", "出租人電話", "承租人電話"];
 }
 
 function applyStatusValidation_(sheet, headers) {
@@ -1355,6 +1366,7 @@ function formatContractManagerSheet_(sheet) {
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
     : ["", "", "", ""];
+  existingValues[2] = normalizePhoneForSheet_(existingValues[2]);
 
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).clearDataValidations();
   sheet.clear();
@@ -1362,6 +1374,7 @@ function formatContractManagerSheet_(sheet) {
   sheet.setColumnWidth(1, 180);
   sheet.setColumnWidth(2, 220);
   sheet.setColumnWidth(3, 420);
+  sheet.getRange("B2:B4").setNumberFormat("@");
 
   sheet.getRange("A1:C1").merge()
     .setValue("合約操作")
@@ -1531,6 +1544,15 @@ function formatContractSheet_(sheet, headers) {
       sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("#,##0");
     }
   });
+
+  getPhoneTextHeaders_().forEach((header) => {
+    const column = getHeaderColumn_(headers, header);
+
+    if (column) {
+      sheet.getRange(2, column, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+    }
+  });
+  repairPhoneColumn_(sheet, headers);
 
   const generatedAtColumn = getHeaderColumn_(headers, "合約產生時間");
 
