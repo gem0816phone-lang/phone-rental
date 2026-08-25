@@ -1921,13 +1921,11 @@ function getContractRentAmount_(rowData) {
 
 function appendContractSignatureTable_(body, rowData) {
   const table = body.appendTable([
-    ["承租人姓名", rowData["承租人姓名"]],
-    ["簽署日期時間", "__________ 年 _____ 月 _____ 日 _____ 點 _____ 分"],
-    ["承租人簽名", "\n\n"]
+    [`承租人 ${plainText_(rowData["承租人姓名"])} 簽名`, ""]
   ]);
   styleContractTable_(table, { headerRows: 0, labelColumns: [0] });
   setTwoColumnTableWidths_(table);
-  styleSignatureDateRow_(table);
+  styleSignatureRow_(table);
 }
 
 function appendContractBullets_(body, items) {
@@ -2003,12 +2001,12 @@ function setTwoColumnTableWidths_(table) {
   }
 }
 
-function styleSignatureDateRow_(table) {
-  const row = table.getRow(1);
-  row.setMinimumHeight(32);
+function styleSignatureRow_(table) {
+  const row = table.getRow(0);
+  row.setMinimumHeight(54);
 
   for (let cellIndex = 0; cellIndex < row.getNumCells(); cellIndex += 1) {
-    row.getCell(cellIndex).setVerticalAlignment(DocumentApp.VerticalAlignment.BOTTOM);
+    row.getCell(cellIndex).setVerticalAlignment(DocumentApp.VerticalAlignment.CENTER);
   }
 }
 
