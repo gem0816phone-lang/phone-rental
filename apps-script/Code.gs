@@ -1959,8 +1959,10 @@ function styleContractTable_(table, options) {
 function mergeTableRowCells_(table, rowIndex, startCellIndex, endCellIndex) {
   const row = table.getRow(rowIndex);
 
-  for (let cellIndex = endCellIndex; cellIndex > startCellIndex; cellIndex -= 1) {
-    row.getCell(cellIndex).merge();
+  for (let mergeCount = 0; mergeCount < endCellIndex - startCellIndex; mergeCount += 1) {
+    if (row.getNumCells() > startCellIndex + 1) {
+      row.getCell(startCellIndex + 1).merge();
+    }
   }
 }
 
@@ -1968,7 +1970,7 @@ function setContractInfoTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
     const row = table.getRow(rowIndex);
 
-    if (row.getNumCells() === 2) {
+    if (row.getNumCells() <= 2) {
       setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_INFO_LABEL_WIDTH]);
     } else {
       setTableRowWidths_(row, [CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH, CONTRACT_INFO_LABEL_WIDTH, CONTRACT_INFO_VALUE_WIDTH]);
