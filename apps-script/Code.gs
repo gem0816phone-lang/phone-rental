@@ -144,7 +144,8 @@ const CONTRACT_MANAGER_ACTIONS = {
   8: "generate",
   9: "confirm",
   10: "cancel",
-  11: "repairSignatureLinks"
+  11: "repairSignatureLinks",
+  12: "repairSignedPdfs"
 };
 
 function onOpen() {
@@ -232,6 +233,10 @@ function onContractManagerEdit_(e) {
       message = repairContractSignatureLinks_();
     }
 
+    if (action === "repairSignedPdfs") {
+      message = repairSignedContractPdfs_();
+    }
+
     writeContractManagerStatus_(message);
   } catch (error) {
     range.setValue(false);
@@ -249,6 +254,7 @@ function addPhoneRentalMenu_() {
     .addItem("建立/更新合約明細", "prepareContractDetail")
     .addItem("產生合約書", "generateContractFromSelectedRow")
     .addItem("修復簽名連結", "repairContractSignatureLinks")
+    .addItem("修復已簽署PDF", "repairSignedContractPdfs")
     .addSeparator()
     .addItem("標記已確認", "markSelectedReservationConfirmed")
     .addItem("標記已取消", "markSelectedReservationCanceled")
@@ -1123,7 +1129,7 @@ function setupContractManager() {
   getContractSheet_();
   getContractFolder_();
   const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
-  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B11 執行。`);
+  showAlert_(`已建立「合約操作」與「合約明細」工作表，${triggerMessage}，也已確認合約資料夾權限。\n\n之後請在「合約操作」填預約編號，再勾選 B7-B12 執行。`);
 }
 
 function authorizePhoneRentalPermissions() {
@@ -1169,6 +1175,17 @@ function repairContractSignatureLinks() {
   }
 }
 
+function repairSignedContractPdfs() {
+  try {
+    const message = repairSignedContractPdfs_();
+    showAlert_(message);
+    return message;
+  } catch (error) {
+    showAlert_(error.message);
+    throw error;
+  }
+}
+
 function markManagerReservationConfirmed() {
   try {
     const message = updateReservationStatusFromManager_("已確認");
@@ -1206,6 +1223,8 @@ function handleContractManagerWebAction_(params) {
       message = updateReservationStatusFromManager_("已取消");
     } else if (managerAction === "repairSignatureLinks") {
       message = repairContractSignatureLinks_();
+    } else if (managerAction === "repairSignedPdfs") {
+      message = repairSignedContractPdfs_();
     } else {
       throw new Error("未知的合約操作。");
     }
@@ -1426,6 +1445,50 @@ function repairContractSignatureLinks_() {
   return `已修復 ${repairedCount} 筆簽名連結。`;
 }
 
+function repairSignedContractPdfs_() {
+  const sheet = getContractSheet_();
+  const headers = ensureContractHeaders_(sheet);
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return "合約明細目前沒有資料列可修復。";
+  }
+
+  let repairedCount = 0;
+  let skippedCount = 0;
+
+  for (let row = 2; row <= lastRow; row += 1) {
+    const context = getRowContext_(sheet, row);
+    const rowData = context.rowData;
+
+    if (!/已簽署/.test(text_(rowData["簽名狀態"]))) {
+      skippedCount += 1;
+      continue;
+    }
+
+    if (getContractCellLink_(sheet, headers, row, "簽署完成PDF")) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const signatureFileId = getDriveFileIdFromUrl_(rowData["簽名檔案"]);
+
+    if (!signatureFileId || !text_(rowData["合約文件"])) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const signatureFile = DriveApp.getFileById(signatureFileId);
+    const signedAt = parseContractSignedAt_(rowData["簽名時間"]);
+    const signedPdfFile = createSignedContractPdf_(rowData, signatureFile, signedAt);
+    writeSignedPdfLink_(sheet, headers, row, signedPdfFile.getUrl());
+    repairedCount += 1;
+  }
+
+  formatContractSheet_(sheet, headers);
+  return `已補產生 ${repairedCount} 筆已簽署 PDF，略過 ${skippedCount} 筆。`;
+}
+
 function updateReservationStatusFromManager_(status) {
   const manager = getContractManagerData_();
   const context = getReservationContextById_(manager.reservationId);
@@ -1577,7 +1640,7 @@ function getContractManagerSheet_() {
 }
 
 function formatContractManagerSheet_(sheet) {
-  ensureSheetSize_(sheet, 12, 3);
+  ensureSheetSize_(sheet, 13, 3);
 
   const existingValues = sheet.getLastRow() >= 5
     ? sheet.getRange("B2:B5").getDisplayValues().map((row) => row[0])
@@ -1610,24 +1673,25 @@ function formatContractManagerSheet_(sheet) {
     ["標記已確認", "", "收到訂金、確定出租後再點，日期才會正式鎖住"],
     ["標記已取消", "", "取消預約時使用"],
     ["修復簽名連結", "", "把「合約明細」舊資料列的簽名連結重寫成正確連結"],
+    ["修復已簽署PDF", "", "已簽署但尚未產生完成 PDF 時使用"],
   ];
 
   sheet.getRange(2, 1, rows.length, 3).setValues(rows);
-  sheet.getRange("A2:A12")
+  sheet.getRange("A2:A13")
     .setBackground("#f5f3ff")
     .setFontWeight("bold");
-  sheet.getRange("C2:C12")
+  sheet.getRange("C2:C13")
     .setFontColor("#64748b")
     .setFontSize(10);
-  sheet.getRange("A1:C12")
+  sheet.getRange("A1:C13")
     .setVerticalAlignment("middle")
     .setWrap(true);
-  sheet.getRange("B7:B11").clearDataValidations();
-  sheet.getRange("B7:B11")
+  sheet.getRange("B7:B12").clearDataValidations();
+  sheet.getRange("B7:B12")
     .clearContent()
     .insertCheckboxes()
     .setValue(false);
-  sheet.getRange("B7:B11")
+  sheet.getRange("B7:B12")
     .setBackground("#eff6ff")
     .setFontColor("#1d4ed8")
     .setFontWeight("bold")
@@ -2251,6 +2315,21 @@ function updateSignedAtFooter_(document, signedAt) {
 
 function formatContractSignedAt_(date) {
   return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy年MM月dd日 HH點mm分");
+}
+
+function parseContractSignedAt_(value) {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const raw = text_(value);
+
+  if (!raw) {
+    return new Date();
+  }
+
+  const parsedDate = new Date(raw.replace(" ", "T"));
+  return Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 }
 
 function appendContractBullets_(body, items) {
