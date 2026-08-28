@@ -2123,7 +2123,6 @@ function createContractFiles_(rowData) {
   earnestMoneyIntro.setIndentStart(18);
   earnestMoneyIntro.setIndentFirstLine(0);
   appendContractBullets_(body, [
-    "定金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。",
     "承租人若於預定租借日（不含當日）前 14 天以上取消預約，出租人將退還已付定金之全額。",
     "承租人若於預定租借日（不含當日）前 14 天之內取消預約，承租人不得請求返還定金，該定金全額由出租人沒收。",
     "出租人若因故（包括但不限於設備損壞、前一手延遲歸還、個人突發狀況等事由）致無法出租時，出租人僅負退還已收定金全額之義務，不適用加倍返還定金之規定。承租人同意定金全額退還後，雙方契約即告終止，承租人不得再向出租人請求任何其餘的損害賠償、車資、替代租借之差額或違約金。",
@@ -2246,7 +2245,7 @@ function appendContractFeeTable_(body, rowData) {
     ["項目", "金額"],
     ["總租金", `NT. ${formatContractAmount_(getContractRentAmount_(rowData))} 元`],
     ["押金", getContractDepositDisplay_(rowData)],
-    ["定金", `NT. ${formatContractAmount_(rowData["已付定金"])} 元`],
+    ["定金", `NT. ${formatContractAmount_(rowData["已付定金"])} 元 (定金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清)`],
     ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
   ];
   const table = body.appendTable(rows);
