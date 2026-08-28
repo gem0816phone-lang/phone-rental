@@ -198,6 +198,8 @@ const pageSections = {
 const pageLinks = document.querySelectorAll("[data-page-link]");
 
 const today = startOfDay(new Date());
+const bookingWindowDays = 90;
+const maxBookingDate = addDays(today, bookingWindowDays - 1);
 const localBookedDatesByItem = {};
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedDates = new Set();
@@ -861,7 +863,18 @@ function updateItemSelection() {
 }
 
 function changeMonth(delta) {
-  visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1);
+  const minMonth = getMonthStart(today);
+  const maxMonth = getMonthStart(maxBookingDate);
+  const nextMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1);
+
+  if (nextMonth < minMonth) {
+    visibleMonth = minMonth;
+  } else if (nextMonth > maxMonth) {
+    visibleMonth = maxMonth;
+  } else {
+    visibleMonth = nextMonth;
+  }
+
   renderCalendar();
 }
 
@@ -870,7 +883,8 @@ function renderCalendar() {
   const month = visibleMonth.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const minMonth = getMonthStart(today);
+  const maxMonth = getMonthStart(maxBookingDate);
   const packageInfo = getPackageInfo();
   const hasPackage = Boolean(packageInfo);
   const isAvailabilityReady = isAvailabilityReadyForPackage(packageInfo);
@@ -879,6 +893,7 @@ function renderCalendar() {
 
   monthLabel.textContent = monthFormatter.format(visibleMonth);
   prevMonthButton.disabled = visibleMonth <= minMonth;
+  nextMonthButton.disabled = visibleMonth >= maxMonth;
 
   const cells = [];
 
@@ -888,6 +903,12 @@ function renderCalendar() {
 
   for (let day = 1; day <= lastDay.getDate(); day += 1) {
     const date = new Date(year, month, day);
+
+    if (!isDateInBookingWindow(date)) {
+      cells.push('<span class="calendar-empty" aria-hidden="true"></span>');
+      continue;
+    }
+
     const dateString = toDateInputValue(date);
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isPast = date < today;
@@ -1030,6 +1051,11 @@ function getPendingReservations(dateString) {
 }
 
 function toggleDate(dateString) {
+  if (!isDateStringInBookingWindow(dateString)) {
+    showStatus("error", `只能選擇 ${bookingWindowDays} 天內的租借日期。`);
+    return;
+  }
+
   const nextDates = new Set(selectedDates);
 
   if (nextDates.has(dateString)) {
@@ -1782,7 +1808,7 @@ function getItemLabel(itemId) {
 }
 
 function getSelectedDateList() {
-  return [...selectedDates].sort();
+  return [...selectedDates].filter(isDateStringInBookingWindow).sort();
 }
 
 function getDailyRate(dates, packageInfo) {
@@ -1885,6 +1911,25 @@ function clearStatus() {
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return startOfDay(nextDate);
+}
+
+function getMonthStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function isDateInBookingWindow(date) {
+  return date >= today && date <= maxBookingDate;
+}
+
+function isDateStringInBookingWindow(value) {
+  const date = parseDate(value);
+  return !Number.isNaN(date.getTime()) && isDateInBookingWindow(date);
 }
 
 function toDateInputValue(date) {
