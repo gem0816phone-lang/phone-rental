@@ -912,35 +912,36 @@ function renderCalendar() {
     const dateString = toDateInputValue(date);
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isPast = date < today;
-    const isFull = canSelectDates && unavailableDates.has(dateString);
+    const isBeyondBookingWindow = date > maxBookingDate;
+    const isFull = canSelectDates && !isBeyondBookingWindow && unavailableDates.has(dateString);
     const isPending = canSelectDates && !isFull && hasPendingReservations(dateString);
     const isSelected = selectedDates.has(dateString);
-    const status = !hasPackage
-      ? "先選"
-      : !isAvailabilityReady || isAvailabilitySyncing
-        ? "同步中"
-        : isPast
-          ? "已過"
-          : isFull
-            ? "已滿"
-            : isPending
-              ? "待定"
-            : "可選";
-    const statusClass = !hasPackage
+    const status = isPast
+      ? "已過"
+      : isBeyondBookingWindow
+        ? "未開放"
+        : !hasPackage
+          ? "先選"
+          : !isAvailabilityReady || isAvailabilitySyncing
+            ? "同步中"
+            : isFull
+              ? "已滿"
+              : isPending
+                ? "待定"
+                : "可選";
+    const statusClass = isPast || isBeyondBookingWindow || !hasPackage
       ? "status-past"
       : !isAvailabilityReady || isAvailabilitySyncing
         ? "status-syncing"
-        : isPast
-          ? "status-past"
-          : isFull
-            ? "status-full"
-            : isPending
-              ? "status-pending"
+        : isFull
+          ? "status-full"
+          : isPending
+            ? "status-pending"
             : "status-available";
     const classes = ["calendar-day"];
 
     if (isWeekend) classes.push("is-weekend");
-    if (isPast || !hasPackage) classes.push("is-past");
+    if (isPast || isBeyondBookingWindow || !hasPackage) classes.push("is-past");
     if (hasPackage && (!isAvailabilityReady || isAvailabilitySyncing)) classes.push("is-syncing");
     if (isFull) classes.push("is-full");
     if (isPending) classes.push("is-pending");
@@ -953,7 +954,7 @@ function renderCalendar() {
         data-date="${dateString}"
         data-full="${isFull ? "true" : "false"}"
         data-pending="${isPending ? "true" : "false"}"
-        ${!canSelectDates || isPast ? "disabled" : ""}
+        ${!canSelectDates || isPast || isBeyondBookingWindow ? "disabled" : ""}
         aria-pressed="${isSelected ? "true" : "false"}"
         aria-label="${dateString} ${status}${isSelected ? "，已選" : ""}${isFull ? "，點擊查看已租物品" : ""}${isPending ? "，點擊查看排隊順位" : ""}"
       >
@@ -1923,12 +1924,16 @@ function getMonthStart(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
+function getMonthEnd(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
 function isDateInBookingWindow(date) {
   return date >= today && date <= maxBookingDate;
 }
 
 function isDateVisibleInCalendar(date) {
-  return date >= getMonthStart(today) && date <= maxBookingDate;
+  return date >= getMonthStart(today) && date <= getMonthEnd(maxBookingDate);
 }
 
 function isDateStringInBookingWindow(value) {
