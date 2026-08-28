@@ -2144,9 +2144,9 @@ function createContractFiles_(rowData) {
   ]);
   appendContractSection_(body, "七、逾期歸還");
   appendContractBullets_(body, [
-    "超時每一小時扣除押金100元，若有狀況請提前告知協商。",
+    "於雙方約定時間內未準時歸還，超時每一小時扣除押金100元，若有狀況請提前告知協商。",
     "若超時造成當日後續客人預約時間無法準時交機，需額外賠償後續客人的定金。",
-    "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
+    "若超時一天以上且無法聯繫或協商無法達成共識，將採取法律行動，產生的費用由承租方承擔。"
   ]);
   appendContractDepositSection_(body, rowData);
   appendContractSection_(body, "九、簽名確認");
