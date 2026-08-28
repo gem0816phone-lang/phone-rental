@@ -895,7 +895,7 @@ function buildTelegramReservationMessage_(rowData, requestedDates) {
     TELEGRAM_SEPARATOR,
     `姓名：${rowData["姓名"]}`,
     `電話：${rowData["電話"]}`,
-    `IG帳號：${rowData["thread 帳號"]}`,
+    `thread帳號：${rowData["thread 帳號"]}`,
     TELEGRAM_SEPARATOR,
     `總租金 ${formatTelegramAmount_(rowData["預估租金"])} 元`,
     `已選 ${requestedDates.length} 日 ｜ ${period}${discountLabel}`,
@@ -2224,7 +2224,7 @@ function appendContractInfoTable_(body, rowData) {
     [
       "租借期間",
       `${plainText_(rowData["租借開始時間"])} 至 ${plainText_(rowData["租借結束時間"])}`,
-      "實際取還機時間，透過 IG 訊息進行約定"
+      "實際取還機時間，透過Threads訊息進行約定"
     ]
   ]);
   styleContractTable_(periodTable, { headerRows: 0, labelColumns: [0] });
@@ -3113,7 +3113,7 @@ function validate_(data, requestedDates, requestedItemIds) {
   const requiredFields = [
     { label: "姓名", value: data.customerName },
     { label: "電話", value: data.phone },
-    { label: "IG 帳號", value: data.threadAccount || data.lineId }
+    { label: "thread 帳號", value: data.threadAccount || data.lineId }
   ];
 
   requiredFields.forEach((field) => {
@@ -3293,10 +3293,6 @@ function canonicalHeader_(value) {
     "Thread": "thread 帳號",
     "Threads": "thread 帳號",
     "thread": "thread 帳號",
-    "IG": "thread 帳號",
-    "IG 帳號": "thread 帳號",
-    "Instagram": "thread 帳號",
-    "Instagram 帳號": "thread 帳號",
     "電話號碼": "電話",
     "客人姓名": "姓名",
     "租金": "每日租金",

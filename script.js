@@ -1302,7 +1302,7 @@ async function handleSubmit(event) {
       completeReservation(reservationId);
     }
   } catch (error) {
-    showStatus("error", "送出時遇到問題，請稍後再試，或直接用 IG 聯繫店家。");
+    showStatus("error", "送出時遇到問題，請稍後再試，或直接用 thread 聯絡店家。");
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "送出預約";
@@ -1316,7 +1316,7 @@ function completeReservation(reservationId) {
 function showSuccessDialog(reservationId) {
   successDialogBody.innerHTML = `
     <p><strong>預約已送出，預約編號 ${escapeHtml(reservationId)}。</strong></p>
-    <p>請至 IG 聯繫 <a class="thread-inline-link" href="https://www.instagram.com/gem0816phone/" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a></p>
+    <p>請至 thread 聯繫 <a class="thread-inline-link" href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a></p>
     <p>私訊告知『已填寫預約表單』</p>
     <p>聯絡並交付定金後才會鎖定檔期</p>
   `;
@@ -1326,7 +1326,7 @@ function showSuccessDialog(reservationId) {
     return;
   }
 
-  alert(`預約已送出，預約編號 ${reservationId}。\n請至 IG 聯繫 @gem0816phone\n私訊告知『已填寫預約表單』\n聯絡並交付定金後才會鎖定檔期`);
+  alert(`預約已送出，預約編號 ${reservationId}。\n請至 thread 聯繫 @gem0816phone\n私訊告知『已填寫預約表單』\n聯絡並交付定金後才會鎖定檔期`);
   resetReservationFlow();
 }
 
@@ -1512,7 +1512,7 @@ function renderDepositNotice() {
   }
 
   const isNoIdDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo);
-  const threadContactLine = '<p>送出預約後請至 IG 聯繫 <a href="https://www.instagram.com/gem0816phone/" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a></p>';
+  const threadContactLine = '<p>送出預約後請至 thread 聯繫 <a href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a></p>';
 
   depositNotice.hidden = false;
 
