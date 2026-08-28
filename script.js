@@ -506,7 +506,7 @@ function renderFeeLines(packageInfo) {
   if (packageInfo.isAddOnOffer) {
     return `
       <span class="item-meta fee-line offer-fee">加租優惠：${packageInfo.daily} 元 / 日</span>
-      <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本手持正反面合照</span>
+      <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本</span>
       <span class="item-meta fee-line">免證押金：${packageInfo.depositNoId} 元</span>
     `;
   }
@@ -514,7 +514,7 @@ function renderFeeLines(packageInfo) {
   return `
     <span class="item-meta fee-line">單日租金：${packageInfo.daily} 元 / 日</span>
     <span class="item-meta fee-line">連租三天：${packageInfo.discountedDaily} 元 / 日</span>
-    <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本手持正反面合照</span>
+    <span class="item-meta fee-line deposit-start">證件押金：${packageInfo.depositWithId} 元 + 證件正本</span>
     <span class="item-meta fee-line">免證押金：${packageInfo.depositNoId} 元</span>
   `;
 }
@@ -1807,7 +1807,7 @@ function areConsecutiveDates(dates) {
 }
 
 function getDepositWithIdLabel(packageInfo) {
-  return `${packageInfo.depositWithId} 元 + 證件正本手持正反面合照`;
+  return `${packageInfo.depositWithId} 元 + 證件正本`;
 }
 
 function getDepositNoIdLabel(packageInfo) {
