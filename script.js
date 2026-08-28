@@ -904,7 +904,7 @@ function renderCalendar() {
   for (let day = 1; day <= lastDay.getDate(); day += 1) {
     const date = new Date(year, month, day);
 
-    if (!isDateInBookingWindow(date)) {
+    if (!isDateVisibleInCalendar(date)) {
       cells.push('<span class="calendar-empty" aria-hidden="true"></span>');
       continue;
     }
@@ -1925,6 +1925,10 @@ function getMonthStart(date) {
 
 function isDateInBookingWindow(date) {
   return date >= today && date <= maxBookingDate;
+}
+
+function isDateVisibleInCalendar(date) {
+  return date >= getMonthStart(today) && date <= maxBookingDate;
 }
 
 function isDateStringInBookingWindow(value) {
