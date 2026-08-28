@@ -1485,14 +1485,23 @@ function renderDepositNotice() {
   }
 
   const isNoIdDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo);
-  const reservationDepositLine = isNoIdDeposit
-    ? "需先支付定金 500 元 才可保留預定"
-    : "需先支付定金 500 元 + 手持證件自拍(可上浮水印) 才可保留預定";
+  const threadContactLine = '<p>送出預約後請至 thread 聯繫 <a href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a></p>';
 
   depositNotice.hidden = false;
+
+  if (!isNoIdDeposit) {
+    depositNotice.innerHTML = `
+      ${threadContactLine}
+      <p>需先支付定金 500 元 + 手持證件自拍(上浮水印) 才可保留預定</p>
+      <p>剩餘款項及押金將於面交時付清</p>
+      <p>證件正本僅於面交時確認是承租人本人無誤，不收取。</p>
+    `;
+    return;
+  }
+
   depositNotice.innerHTML = `
-    <p>送出預約後請至 thread 聯繫 <a href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">@gem0816phone</a></p>
-    <p>${reservationDepositLine}</p>
+    ${threadContactLine}
+    <p>需先支付定金 500 元 才可保留預定</p>
     <p>定金支付後若取消預約將保留至下次租借使用</p>
     <p>剩餘款項及押金將於面交時付清</p>
   `;
