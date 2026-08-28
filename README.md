@@ -1,6 +1,6 @@
 # 手機租借網站
 
-這是一個可放在 GitHub Pages 的手機租借預約網站。客人先在日曆選擇可租日期，再填寫姓名、thread 帳號與電話，前端會呼叫 Google Apps Script，將資料寫入 Google Sheet。
+這是一個可放在 GitHub Pages 的手機租借預約網站。客人先在日曆選擇可租日期，再填寫姓名、IG 帳號與電話，前端會呼叫 Google Apps Script，將資料寫入 Google Sheet。
 
 ## 檔案
 
