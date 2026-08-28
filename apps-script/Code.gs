@@ -2123,6 +2123,7 @@ function createContractFiles_(rowData) {
   earnestMoneyIntro.setIndentStart(18);
   earnestMoneyIntro.setIndentFirstLine(0);
   appendContractBullets_(body, [
+    "定金交付後才會鎖定檔期，剩餘款項將於取機面交時當面付清。",
     "承租人若於預定租借日（不含當日）前 14 天以上取消預約，出租人將退還已付定金之全額。",
     "承租人若於預定租借日（不含當日）前 14 天之內取消預約，承租人不得請求返還定金，該定金全額由出租人沒收。",
     "出租人若因故（包括但不限於設備損壞、前一手延遲歸還、個人突發狀況等事由）致無法出租時，出租人僅負退還已收定金全額之義務，不適用加倍返還定金之規定。承租人同意定金全額退還後，雙方契約即告終止，承租人不得再向出租人請求任何其餘的損害賠償、車資、替代租借之差額或違約金。",
@@ -2258,8 +2259,8 @@ function appendContractDepositSection_(body, rowData) {
     appendContractSection_(body, "八、押金及證件須知");
     appendContractBullets_(body, [
       "還機時確認設備無異常後，現場退還押金。",
-      "若設備損壞且金額不足以賠償，且雙方協調未達成共識，將採取法律行動，產生的費用由承租方承擔。",
-      "證件將於現場確認是承租人本人無誤，於現場使用承租人自己的手機拍照加上浮水印後回傳給出租人。"
+      "若設備損壞、遺失或逾期未歸還，且雙方協調未達成共識，出租人將逕行依法採取法律行動（包含民刑事訴訟、聲請支付命令），並得以合約留存之證件資料作為訴訟被告資訊，承租人絕無異議。",
+      "證件將於現場確認是承租人本人無誤，於現場使用承租人自己的手機拍照加上浮水印後回傳給出租人，該照片僅限本合約身分確認及後續法律訴訟備案使用，出租人保證不挪作他用。"
     ]);
     return;
   }
@@ -2424,8 +2425,7 @@ function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAft
 }
 
 function appendContractFinalConfirmation_(body) {
-  appendContractFinalLine_(body, "定金交付+手持證件自拍(可上浮水印)，才會鎖定檔期，剩餘款項將於取機面交時當面付清。", 4);
-  appendContractFinalLine_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", 0);
+  appendContractFinalLine_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", 4);
   appendContractFinalLine_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", 0);
 }
 
