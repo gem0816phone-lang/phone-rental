@@ -2268,7 +2268,8 @@ function appendContractDepositSection_(body, rowData) {
     appendContractBullets_(body, [
       "還機時確認設備無異常後，現場退還押金。",
       "若設備損壞、遺失或逾期未歸還，且雙方協調未達成共識，出租人將逕行依法採取法律行動（包含民刑事訴訟、聲請支付命令），並得以合約留存之證件資料作為訴訟被告資訊，承租人絕無異議。",
-      "證件將於現場確認是承租人本人無誤，於現場使用承租人自己的手機拍照加上浮水印後回傳給出租人，該照片僅限本合約身分確認及後續法律訴訟備案使用，出租人保證不挪作他用。"
+      "證件正本僅於面交時確認是承租人本人無誤，不收取。",
+      "證件正本手持正反面的合照僅限本合約身分確認及後續法律訴訟備案使用，出租人保證不挪作他用。"
     ]);
     return;
   }
@@ -2287,7 +2288,7 @@ function getContractRentAmount_(rowData) {
 function getContractDepositDisplay_(rowData) {
   const depositText = `NT. ${formatContractAmount_(rowData["押金"])} 元`;
   return requiresCertificateDeposit_(rowData)
-    ? `${depositText} + 證件正本(身分證或駕照擇一) 現場手持正反面合照(會加浮水印)`
+    ? `${depositText} + 證件正本手持正反面合照 (身分證或駕照擇一且會上浮水印)`
     : depositText;
 }
 
