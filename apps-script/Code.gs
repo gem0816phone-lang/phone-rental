@@ -2119,7 +2119,9 @@ function createContractFiles_(rowData) {
   appendContractSection_(body, "三、費用清單");
   appendContractFeeTable_(body, rowData);
   appendContractSection_(body, "四、定金須知");
-  appendCompactParagraph_(body, "雙方同意本租借契約為個人間之民事約定，排除民法第249條第3款之適用，並遵守下列約定：", CONTRACT_BODY_FONT_SIZE, 0, 1);
+  const earnestMoneyIntro = appendCompactParagraph_(body, "雙方同意本租借契約為個人間之民事約定，排除民法第249條第3款之適用，並遵守下列約定：", CONTRACT_BODY_FONT_SIZE, 0, 1);
+  earnestMoneyIntro.setIndentStart(18);
+  earnestMoneyIntro.setIndentFirstLine(0);
   appendContractBullets_(body, [
     "承租人若於預定租借日（不含當日）前 14 天以上取消預約，出租人將退還已付定金之全額。",
     "承租人若於預定租借日（不含當日）前 14 天之內取消預約，承租人不得請求返還定金，該定金全額由出租人沒收。",
