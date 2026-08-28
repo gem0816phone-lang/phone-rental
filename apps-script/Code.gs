@@ -156,7 +156,7 @@ function onSpreadsheetOpen_() {
 
 function installPhoneRentalManager() {
   const spreadsheet = SpreadsheetApp.openById(FALLBACK_SPREADSHEET_ID);
-  getContractManagerSheet_();
+  getContractManagerSheet_({ forceFormat: true });
   getContractSheet_();
 
   const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
@@ -1162,7 +1162,7 @@ function markSelectedReservationCanceled() {
 
 function setupContractManager() {
   const spreadsheet = getReservationSpreadsheet_();
-  getContractManagerSheet_();
+  getContractManagerSheet_({ forceFormat: true });
   getContractSheet_();
   getContractFolder_();
   const triggerMessage = installPhoneRentalManagerTriggers_(spreadsheet);
@@ -1461,8 +1461,6 @@ function prepareContractDetailFromManager_() {
   }
 
   const row = upsertContractDetail_(contractSheet, contractHeaders, detail);
-  contractSheet.activate();
-  contractSheet.setActiveRange(contractSheet.getRange(row, 1, 1, contractHeaders.length));
   return `已建立/更新合約明細：${manager.reservationId}。請到「合約明細」第 ${row} 列確認細項。`;
 }
 
@@ -1699,16 +1697,27 @@ function getContractSheet_() {
   return sheet;
 }
 
-function getContractManagerSheet_() {
+function getContractManagerSheet_(options) {
   const spreadsheet = getReservationSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(CONTRACT_MANAGER_SHEET_NAME);
+  const settings = options || {};
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet(CONTRACT_MANAGER_SHEET_NAME);
   }
 
-  formatContractManagerSheet_(sheet);
+  if (settings.forceFormat || !isContractManagerSheetReady_(sheet)) {
+    formatContractManagerSheet_(sheet);
+  }
+
   return sheet;
+}
+
+function isContractManagerSheetReady_(sheet) {
+  return text_(sheet.getRange("A1").getDisplayValue()) === CONTRACT_MANAGER_SHEET_NAME
+    && text_(sheet.getRange("A7").getDisplayValue()) === "建立/更新合約明細"
+    && text_(sheet.getRange("A8").getDisplayValue()) === "產生合約書"
+    && text_(sheet.getRange("A9").getDisplayValue()) === "修復已簽署PDF";
 }
 
 function formatContractManagerSheet_(sheet) {
@@ -1962,7 +1971,7 @@ function getDatesFromRowData_(rowData) {
 }
 
 function getDefaultPaidDeposit_(rowData) {
-  return /免證|不用證|不押證/i.test(text_(rowData["押金方式"])) ? 1000 : 500;
+  return 500;
 }
 
 function getContractEquipmentLines_(itemIds) {

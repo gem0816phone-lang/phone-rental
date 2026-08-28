@@ -1486,7 +1486,7 @@ function renderDepositNotice() {
 
   const isNoIdDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo);
   const reservationDepositLine = isNoIdDeposit
-    ? "需先支付定金 1000 元 才可保留預定"
+    ? "需先支付定金 500 元 才可保留預定"
     : "需先支付定金 500 元 + 手持證件自拍(可上浮水印) 才可保留預定";
 
   depositNotice.hidden = false;
