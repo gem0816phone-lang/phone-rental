@@ -127,7 +127,7 @@ const CONTRACT_HEADERS = [
   "預估租金",
   "押金",
   "押金方式",
-  "已付訂金",
+  "已付定金",
   "剩餘款項",
   "合約文件",
   "合約PDF",
@@ -1866,7 +1866,7 @@ function formatContractSheet_(sheet, headers) {
     "預估租金": 95,
     "押金": 95,
     "押金方式": 170,
-    "已付訂金": 95,
+    "已付定金": 95,
     "剩餘款項": 95,
     "合約文件": 260,
     "合約PDF": 260,
@@ -1894,7 +1894,7 @@ function formatContractSheet_(sheet, headers) {
     range.setDataValidation(validation);
   }
 
-  ["預估租金", "總租金", "押金", "已付訂金", "剩餘款項"].forEach((header) => {
+  ["預估租金", "總租金", "押金", "已付定金", "剩餘款項"].forEach((header) => {
     const column = getHeaderColumn_(headers, header);
 
     if (column) {
@@ -1943,7 +1943,7 @@ function buildContractDetailFromReservation_(reservationData) {
     "總租金": totalRent || "",
     "押金": deposit || "",
     "押金方式": reservationData["押金方式"],
-    "已付訂金": paidDeposit || "",
+    "已付定金": paidDeposit || "",
     "剩餘款項": totalRent || deposit || paidDeposit ? Math.max(totalRent + deposit - paidDeposit, 0) : "",
     "合約文件": "",
     "合約PDF": "",
@@ -2040,7 +2040,7 @@ function ensureSheetSize_(sheet, minRows, minColumns) {
 }
 
 function shouldRefreshContractDetailValue_(header, currentValue, nextValue) {
-  const autoRefreshHeaders = ["預估租金", "總租金", "押金", "已付訂金", "剩餘款項"];
+  const autoRefreshHeaders = ["預估租金", "總租金", "押金", "已付定金", "剩餘款項"];
 
   if (autoRefreshHeaders.indexOf(header) === -1) {
     return false;
@@ -2091,7 +2091,7 @@ function validateContractDetail_(rowData) {
     "租借設備清單",
     "預估租金",
     "押金",
-    "已付訂金",
+    "已付定金",
     "剩餘款項"
   ];
   const missing = requiredHeaders.filter((header) => !text_(rowData[header]));
@@ -2118,12 +2118,13 @@ function createContractFiles_(rowData) {
   appendContractEquipmentTable_(body, rowData);
   appendContractSection_(body, "三、費用清單");
   appendContractFeeTable_(body, rowData);
-  appendContractSection_(body, "四、訂金須知");
+  appendContractSection_(body, "四、定金須知");
+  appendCompactParagraph_(body, "雙方同意本租借契約為個人間之民事約定，排除民法第249條第3款之適用，並遵守下列約定：", CONTRACT_BODY_FONT_SIZE, 0, 1);
   appendContractBullets_(body, [
-    "若距離預定時間14天以上，承租人取消預約，將退還訂金全額。",
-    "若距離預定時間14天之內，承租人取消預約，訂金全額不退還，並保留下次租借使用，如有特殊情況請私訊討論。",
-    "若距離預定時間14天以上，出租人取消租借，將退還訂金全額。",
-    "若距離預定時間14天之內，出租人取消租借，將退還雙倍訂金。"
+    "承租人若於預定租借日（不含當日）前 14 天以上取消預約，出租人將退還已付定金之全額。",
+    "承租人若於預定租借日（不含當日）前 14 天之內取消預約，承租人不得請求返還定金，該定金全額由出租人沒收。",
+    "出租人若因故（包括但不限於設備損壞、前一手延遲歸還、個人突發狀況等事由）致無法出租時，出租人僅負退還已收定金全額之義務，不適用加倍返還定金之規定。承租人同意定金全額退還後，雙方契約即告終止，承租人不得再向出租人請求任何其餘的損害賠償、車資、替代租借之差額或違約金。",
+    "因颱風、地震等天災導致活動取消，將退還已付定金之全額。"
   ]);
   appendContractSection_(body, "五、使用規範");
   appendContractBullets_(body, [
@@ -2137,12 +2138,12 @@ function createContractFiles_(rowData) {
     "設備非相機功能若有受損，將視情況扣除押金。",
     "設備相機功能若有受損，需照原購買價格買斷。",
     "若設備遺失需賠償原購買價格，若押金不足以賠償，仍需補足差額。",
-    "若設備損壞或遺失造成後續客人無法租借，需賠償後續14天之內已預約客人的訂金。"
+    "若設備損壞或遺失造成後續客人無法租借，需賠償後續預定租借日（不含當日）前 14 天之內，已預約客人的定金。"
   ]);
   appendContractSection_(body, "七、逾期歸還");
   appendContractBullets_(body, [
     "超時每一小時扣除押金100元，若有狀況請提前告知協商。",
-    "若超時造成當日後續客人預約時間無法準時交機，需額外賠償後續客人的訂金。",
+    "若超時造成當日後續客人預約時間無法準時交機，需額外賠償後續客人的定金。",
     "若超時一天以上且無法聯繫，將採取法律行動，產生的費用由承租方承擔。"
   ]);
   appendContractDepositSection_(body, rowData);
@@ -2227,9 +2228,9 @@ function appendContractEquipmentTable_(body, rowData) {
     rows.push([
       String(index + 1),
       equipmentLines[index],
-      equipmentLines[index + 1] ? String(index + 2) : "",
-      equipmentLines[index + 1] || ""
-    ]);
+      equipmentLines[index + 1] ? String(index + 2) : null,
+      equipmentLines[index + 1] || null
+    ].filter((cell) => cell !== null));
   }
 
   const table = body.appendTable(rows);
@@ -2242,7 +2243,7 @@ function appendContractFeeTable_(body, rowData) {
     ["項目", "金額"],
     ["總租金", `NT. ${formatContractAmount_(getContractRentAmount_(rowData))} 元`],
     ["押金", getContractDepositDisplay_(rowData)],
-    ["訂金", `NT. ${formatContractAmount_(rowData["已付訂金"])} 元`],
+    ["定金", `NT. ${formatContractAmount_(rowData["已付定金"])} 元`],
     ["剩餘款項", `NT. ${formatContractAmount_(rowData["剩餘款項"])} 元`]
   ];
   const table = body.appendTable(rows);
@@ -2290,7 +2291,7 @@ function requiresCertificateDeposit_(rowData) {
     return true;
   }
 
-  if (number_(rowData["已付訂金"]) >= 1000) {
+  if (number_(rowData["已付定金"]) >= 1000) {
     return false;
   }
 
@@ -2421,7 +2422,7 @@ function appendCompactParagraph_(body, text, fontSize, spacingBefore, spacingAft
 }
 
 function appendContractFinalConfirmation_(body) {
-  appendContractFinalLine_(body, "訂金交付+手持證件自拍(可上浮水印)，才會鎖定檔期，剩餘款項將於取機面交時當面付清。", 4);
+  appendContractFinalLine_(body, "定金交付+手持證件自拍(可上浮水印)，才會鎖定檔期，剩餘款項將於取機面交時當面付清。", 4);
   appendContractFinalLine_(body, "承租人確認已閱讀、理解並同意本合約全部內容,且同意依本合約約定租借、使用及歸還設備。", 0);
   appendContractFinalLine_(body, "電子文件及電子簽章，在功能上等同於實體文件及簽章，不得僅因其電子形式而否認其法律效力。", 0);
 }
@@ -2499,12 +2500,17 @@ function styleSignatureRow_(table) {
 
 function setEquipmentTableWidths_(table) {
   for (let rowIndex = 0; rowIndex < table.getNumRows(); rowIndex += 1) {
-    setTableRowWidths_(table.getRow(rowIndex), [
-      CONTRACT_ITEM_NUMBER_WIDTH,
-      CONTRACT_ITEM_TEXT_WIDTH,
-      CONTRACT_ITEM_NUMBER_WIDTH,
-      CONTRACT_ITEM_TEXT_WIDTH
-    ]);
+    const row = table.getRow(rowIndex);
+    const widths = row.getNumCells() === 2
+      ? [CONTRACT_ITEM_NUMBER_WIDTH, CONTRACT_TABLE_WIDTH - CONTRACT_ITEM_NUMBER_WIDTH]
+      : [
+        CONTRACT_ITEM_NUMBER_WIDTH,
+        CONTRACT_ITEM_TEXT_WIDTH,
+        CONTRACT_ITEM_NUMBER_WIDTH,
+        CONTRACT_ITEM_TEXT_WIDTH
+      ];
+
+    setTableRowWidths_(row, widths);
   }
 }
 
@@ -3283,6 +3289,7 @@ function canonicalHeader_(value) {
     "每日租金/日": "每日租金",
     "總租金": "預估租金",
     "預估總租金": "預估租金",
+    "已付訂金": "已付定金",
     "取機費用": "取機加價",
     "還機費用": "還機加價",
     "取件地點": "取機地點",

@@ -71,7 +71,7 @@ const weekdayFormatter = new Intl.DateTimeFormat("zh-TW", { weekday: "short" });
 const monthFormatter = new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "long" });
 const config = window.PHONE_RENTAL_CONFIG || {};
 const placeholderEndpoint = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
-const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付訂金後才會鎖定檔期</span>';
+const bookingTitleHtml = '預約表單 ｜ <span class="booking-title-note">聯絡並交付定金後才會鎖定檔期</span>';
 const availabilityFetchTimeoutMs = 20000;
 const showcaseAssetVersion = "showcase-20260826-88";
 const showcaseCategories = [
@@ -996,7 +996,7 @@ function showPendingDateDialog(dateString) {
   `).join("");
 
   if (!bookedDialog.showModal) {
-    window.alert(`目前您是第${rank}順位 可先排隊預約\n${reservations.map((reservation, index) => `${index + 1}.${reservation.createdAtLabel || "稍早"} 有人已先預約 目前待確認`).join("\n")}\n若未即時聯絡並於12小時內繳交訂金\n檔期將自動釋出給下一順位的客人`);
+    window.alert(`目前您是第${rank}順位 可先排隊預約\n${reservations.map((reservation, index) => `${index + 1}.${reservation.createdAtLabel || "稍早"} 有人已先預約 目前待確認`).join("\n")}\n若未即時聯絡並於12小時內繳交定金\n檔期將自動釋出給下一順位的客人`);
     return;
   }
 
@@ -1006,7 +1006,7 @@ function showPendingDateDialog(dateString) {
     <div class="pending-list">
       ${lines || "<p>目前尚無待確認預約。</p>"}
     </div>
-    <p>若未即時聯絡並於12小時內繳交訂金<br />檔期將自動釋出給下一順位的客人</p>
+    <p>若未即時聯絡並於12小時內繳交定金<br />檔期將自動釋出給下一順位的客人</p>
   `;
   bookedDialog.showModal();
 }
@@ -1291,7 +1291,7 @@ function showSuccessDialog(reservationId) {
     <p><strong>預約已送出，預約編號 ${escapeHtml(reservationId)}。</strong></p>
     <p>請至 thread 聯繫 <a class="thread-inline-link" href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener"><strong>@gem0816phone</strong></a></p>
     <p>私訊告知『已填寫預約表單』</p>
-    <p>聯絡並交付訂金後才會鎖定檔期</p>
+    <p>聯絡並交付定金後才會鎖定檔期</p>
   `;
 
   if (typeof successDialog.showModal === "function") {
@@ -1299,7 +1299,7 @@ function showSuccessDialog(reservationId) {
     return;
   }
 
-  alert(`預約已送出，預約編號 ${reservationId}。\n請至 thread 聯繫 @gem0816phone\n私訊告知『已填寫預約表單』\n聯絡並交付訂金後才會鎖定檔期`);
+  alert(`預約已送出，預約編號 ${reservationId}。\n請至 thread 聯繫 @gem0816phone\n私訊告知『已填寫預約表單』\n聯絡並交付定金後才會鎖定檔期`);
   resetReservationFlow();
 }
 
@@ -1486,14 +1486,14 @@ function renderDepositNotice() {
 
   const isNoIdDeposit = selectedDeposit === getDepositNoIdLabel(packageInfo);
   const reservationDepositLine = isNoIdDeposit
-    ? "需先支付訂金 1000 元 才可保留預定"
-    : "需先支付訂金 500 元 + 手持證件自拍(可上浮水印) 才可保留預定";
+    ? "需先支付定金 1000 元 才可保留預定"
+    : "需先支付定金 500 元 + 手持證件自拍(可上浮水印) 才可保留預定";
 
   depositNotice.hidden = false;
   depositNotice.innerHTML = `
     <p>送出預約後請至 thread 聯繫 <a href="https://www.threads.com/@gem0816phone" target="_blank" rel="noopener">@gem0816phone</a></p>
     <p>${reservationDepositLine}</p>
-    <p>訂金支付後若取消預約將保留至下次租借使用</p>
+    <p>定金支付後若取消預約將保留至下次租借使用</p>
     <p>剩餘款項及押金將於面交時付清</p>
   `;
 }
